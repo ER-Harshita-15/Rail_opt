@@ -1,0 +1,161 @@
+task_id,dept,source_system,section_id,km,task,severity,due_date,overdue_days,duration_min,setup_min,block_type,gang_type,gang_size,past_failures
+TMS0000,ENGG,TMS,KRBA-USLP,65.19,Fish-plate renewal,3,2026-10-22,4,60,20,LINE,track_gang,8,0
+TMS0001,ENGG,TMS,BSP-BLSP-J,18.12,Fish-plate renewal,3,2026-11-10,-15,60,20,LINE,track_gang,8,2
+TMS0002,ENGG,TMS,BSP-BLSP-J,18.71,Track geometry defect,3,2026-10-30,-4,150,20,LINE,track_gang,8,1
+TMS0003,ENGG,TMS,TLD-SKR,139.79,Fish-plate renewal,3,2026-11-06,-11,60,20,LINE,track_gang,8,1
+TMS0004,ENGG,TMS,PND-AKLT,98.55,Fish-plate renewal,3,2026-11-10,-15,60,20,LINE,track_gang,8,1
+TMS0005,ENGG,TMS,PND-AKLT,106.91,Rail fracture,5,2026-11-14,-19,120,20,LINE,track_gang,8,1
+TMS0006,ENGG,TMS,DPK-RIG,196.12,Fish-plate renewal,3,2026-11-30,-35,60,20,LINE,track_gang,8,1
+TMS0007,ENGG,TMS,TLD-SKR,151.63,Fish-plate renewal,3,2026-10-10,16,60,20,LINE,track_gang,8,2
+TMS0008,ENGG,TMS,TLD-SKR,146.72,Fish-plate renewal,3,2026-11-15,-20,60,20,LINE,track_gang,8,2
+TMS0009,ENGG,TMS,TLD-SKR,136.77,Fish-plate renewal,3,2026-10-12,14,60,20,LINE,track_gang,8,0
+TMS0010,ENGG,TMS,TLD-SKR,145.27,Rail fracture,5,2026-10-15,11,120,20,LINE,track_gang,8,0
+TMS0011,ENGG,TMS,SKR-DPK,170.04,Rail fracture,5,2026-10-31,-5,120,20,LINE,track_gang,8,1
+TMS0012,ENGG,TMS,USLP-PND,74.5,Track geometry defect,3,2026-10-29,-3,150,20,LINE,track_gang,8,1
+TMS0013,ENGG,TMS,AKLT-TLD,117.23,Track geometry defect,3,2026-10-11,15,150,20,LINE,track_gang,8,2
+TMS0014,ENGG,TMS,AKLT-TLD,129.61,Track geometry defect,3,2026-10-18,8,150,20,LINE,track_gang,8,1
+TMS0015,ENGG,TMS,TLD-SKR,153.37,Track geometry defect,3,2026-11-28,-33,150,20,LINE,track_gang,8,1
+TMS0016,ENGG,TMS,DPK-RIG,182.22,Weld repair,4,2026-12-01,-36,90,20,LINE,track_gang,8,1
+TMS0017,ENGG,TMS,TLD-SKR,148.31,Ballast deficiency,2,2026-11-08,-13,180,20,LINE,track_gang,8,3
+TMS0018,ENGG,TMS,BLSP-J-KRBA,38.08,Fish-plate renewal,3,2026-10-29,-3,60,20,LINE,track_gang,8,1
+TMS0019,ENGG,TMS,USLP-PND,86.47,Rail fracture,5,2026-11-18,-23,120,20,LINE,track_gang,8,3
+TMS0020,ENGG,TMS,AKLT-TLD,120.09,Fish-plate renewal,3,2026-10-24,2,60,20,LINE,track_gang,8,1
+TMS0021,ENGG,TMS,DPK-RIG,179.13,Track geometry defect,3,2026-11-26,-31,150,20,LINE,track_gang,8,1
+TMS0022,ENGG,TMS,KRBA-USLP,47.37,Ballast deficiency,2,2026-11-05,-10,180,20,LINE,track_gang,8,0
+TMS0023,ENGG,TMS,BSP-BLSP-J,12.93,Fish-plate renewal,3,2026-10-29,-3,60,20,LINE,track_gang,8,3
+TMS0024,ENGG,TMS,USLP-PND,78.09,Track geometry defect,3,2026-11-16,-21,150,20,LINE,track_gang,8,1
+TMS0025,ENGG,TMS,BLSP-J-KRBA,31.18,Fish-plate renewal,3,2026-11-09,-14,60,20,LINE,track_gang,8,3
+TMS0026,ENGG,TMS,TLD-SKR,143.84,Weld repair,4,2026-11-13,-18,90,20,LINE,track_gang,8,3
+TMS0027,ENGG,TMS,USLP-PND,80.87,Rail fracture,5,2026-11-27,-32,120,20,LINE,track_gang,8,3
+TMS0028,ENGG,TMS,KRBA-USLP,51.64,Fish-plate renewal,3,2026-11-26,-31,60,20,LINE,track_gang,8,0
+TMS0029,ENGG,TMS,DPK-RIG,176.57,Weld repair,4,2026-10-16,10,90,20,LINE,track_gang,8,0
+TMS0030,ENGG,TMS,PND-AKLT,108.82,Weld repair,4,2026-10-28,-2,90,20,LINE,track_gang,8,0
+TMS0031,ENGG,TMS,BSP-BLSP-J,2.28,Rail fracture,5,2026-10-22,4,120,20,LINE,track_gang,8,3
+TMS0032,ENGG,TMS,SKR-DPK,159.17,Ballast deficiency,2,2026-10-11,15,180,20,LINE,track_gang,8,1
+TMS0033,ENGG,TMS,SKR-DPK,159.37,Ballast deficiency,2,2026-11-17,-22,180,20,LINE,track_gang,8,0
+TMS0034,ENGG,TMS,BSP-BLSP-J,1.03,Rail fracture,5,2026-10-18,8,120,20,LINE,track_gang,8,1
+TMS0035,ENGG,TMS,TLD-SKR,141.19,Ballast deficiency,2,2026-10-07,19,180,20,LINE,track_gang,8,2
+TMS0036,ENGG,TMS,PND-AKLT,107.01,Weld repair,4,2026-11-07,-12,90,20,LINE,track_gang,8,1
+TMS0037,ENGG,TMS,AKLT-TLD,127.44,Weld repair,4,2026-11-06,-11,90,20,LINE,track_gang,8,3
+TMS0038,ENGG,TMS,AKLT-TLD,130.14,Ballast deficiency,2,2026-11-26,-31,180,20,LINE,track_gang,8,0
+TMS0039,ENGG,TMS,SKR-DPK,156.84,Ballast deficiency,2,2026-10-21,5,180,20,LINE,track_gang,8,1
+TMS0040,ENGG,TMS,AKLT-TLD,111.74,Weld repair,4,2026-11-17,-22,90,20,LINE,track_gang,8,3
+TMS0041,ENGG,TMS,AKLT-TLD,125.34,Track geometry defect,3,2026-11-24,-29,150,20,LINE,track_gang,8,1
+TMS0042,ENGG,TMS,TLD-SKR,139.18,Weld repair,4,2026-12-02,-37,90,20,LINE,track_gang,8,0
+TMS0043,ENGG,TMS,PND-AKLT,105.81,Fish-plate renewal,3,2026-11-28,-33,60,20,LINE,track_gang,8,1
+TMS0044,ENGG,TMS,PND-AKLT,101.83,Ballast deficiency,2,2026-11-24,-29,180,20,LINE,track_gang,8,3
+TMS0045,ENGG,TMS,USLP-PND,83.37,Weld repair,4,2026-12-01,-36,90,20,LINE,track_gang,8,1
+TMS0046,ENGG,TMS,KRBA-USLP,53.61,Ballast deficiency,2,2026-12-03,-38,180,20,LINE,track_gang,8,2
+TMS0047,ENGG,TMS,BLSP-J-KRBA,26.36,Rail fracture,5,2026-11-14,-19,120,20,LINE,track_gang,8,1
+TMS0048,ENGG,TMS,AKLT-TLD,121.82,Weld repair,4,2026-10-19,7,90,20,LINE,track_gang,8,1
+TMS0049,ENGG,TMS,DPK-RIG,191.78,Track geometry defect,3,2026-11-29,-34,150,20,LINE,track_gang,8,1
+TMS0050,ENGG,TMS,TLD-SKR,144.73,Ballast deficiency,2,2026-11-27,-32,180,20,LINE,track_gang,8,3
+TMS0051,ENGG,TMS,DPK-RIG,188.4,Weld repair,4,2026-11-23,-28,90,20,LINE,track_gang,8,1
+TMS0052,ENGG,TMS,USLP-PND,83.5,Rail fracture,5,2026-11-30,-35,120,20,LINE,track_gang,8,4
+TMS0053,ENGG,TMS,KRBA-USLP,57.02,Track geometry defect,3,2026-11-03,-8,150,20,LINE,track_gang,8,3
+TMS0054,ENGG,TMS,KRBA-USLP,53.8,Ballast deficiency,2,2026-10-19,7,180,20,LINE,track_gang,8,2
+TMS0055,ENGG,TMS,SKR-DPK,171.98,Ballast deficiency,2,2026-10-24,2,180,20,LINE,track_gang,8,1
+TMS0056,ENGG,TMS,PND-AKLT,103.42,Fish-plate renewal,3,2026-11-08,-13,60,20,LINE,track_gang,8,0
+TMS0057,ENGG,TMS,KRBA-USLP,58.88,Weld repair,4,2026-10-30,-4,90,20,LINE,track_gang,8,3
+TMS0058,ENGG,TMS,DPK-RIG,183.26,Track geometry defect,3,2026-11-01,-6,150,20,LINE,track_gang,8,1
+TMS0059,ENGG,TMS,TLD-SKR,135.22,Fish-plate renewal,3,2026-10-12,14,60,20,LINE,track_gang,8,3
+SMMS0000,S&T,SMMS,KRBA-USLP,50.09,Track circuit fault,4,2026-11-08,-13,100,15,LINE,signal_team,4,2
+SMMS0001,S&T,SMMS,BLSP-J-KRBA,25.34,Point machine maintenance,4,2026-10-11,15,120,15,LINE,signal_team,4,1
+SMMS0002,S&T,SMMS,BSP-BLSP-J,14.71,Point machine maintenance,4,2026-10-18,8,120,15,LINE,signal_team,4,5
+SMMS0003,S&T,SMMS,TLD-SKR,152.89,Signal lamp/relay failure,5,2026-10-25,1,90,15,LINE,signal_team,4,2
+SMMS0004,S&T,SMMS,KRBA-USLP,56.01,Cable insulation test,2,2026-10-18,8,150,15,LINE,signal_team,4,1
+SMMS0005,S&T,SMMS,KRBA-USLP,61.62,Axle counter calibration,3,2026-11-18,-23,80,15,LINE,signal_team,4,1
+SMMS0006,S&T,SMMS,PND-AKLT,100.78,Point machine maintenance,4,2026-11-11,-16,120,15,LINE,signal_team,4,2
+SMMS0007,S&T,SMMS,BLSP-J-KRBA,33.4,Point machine maintenance,4,2026-10-20,6,120,15,LINE,signal_team,4,1
+SMMS0008,S&T,SMMS,PND-AKLT,103.16,Signal lamp/relay failure,5,2026-11-01,-6,90,15,LINE,signal_team,4,1
+SMMS0009,S&T,SMMS,SKR-DPK,156.36,Axle counter calibration,3,2026-11-16,-21,80,15,LINE,signal_team,4,0
+SMMS0010,S&T,SMMS,AKLT-TLD,124.16,Point machine maintenance,4,2026-10-15,11,120,15,LINE,signal_team,4,1
+SMMS0011,S&T,SMMS,PND-AKLT,107.05,Point machine maintenance,4,2026-11-25,-30,120,15,LINE,signal_team,4,2
+SMMS0012,S&T,SMMS,KRBA-USLP,65.16,Signal lamp/relay failure,5,2026-10-21,5,90,15,LINE,signal_team,4,3
+SMMS0013,S&T,SMMS,TLD-SKR,153.24,Signal lamp/relay failure,5,2026-10-20,6,90,15,LINE,signal_team,4,1
+SMMS0014,S&T,SMMS,BLSP-J-KRBA,42.8,Track circuit fault,4,2026-10-25,1,100,15,LINE,signal_team,4,2
+SMMS0015,S&T,SMMS,AKLT-TLD,129.51,Point machine maintenance,4,2026-11-29,-34,120,15,LINE,signal_team,4,3
+SMMS0016,S&T,SMMS,BSP-BLSP-J,19.85,Track circuit fault,4,2026-10-17,9,100,15,LINE,signal_team,4,1
+SMMS0017,S&T,SMMS,TLD-SKR,152.88,Axle counter calibration,3,2026-10-23,3,80,15,LINE,signal_team,4,0
+SMMS0018,S&T,SMMS,USLP-PND,77.09,Axle counter calibration,3,2026-10-11,15,80,15,LINE,signal_team,4,2
+SMMS0019,S&T,SMMS,KRBA-USLP,61.64,Axle counter calibration,3,2026-10-15,11,80,15,LINE,signal_team,4,5
+SMMS0020,S&T,SMMS,SKR-DPK,154.94,Cable insulation test,2,2026-11-02,-7,150,15,LINE,signal_team,4,1
+SMMS0021,S&T,SMMS,PND-AKLT,109.89,Point machine maintenance,4,2026-11-06,-11,120,15,LINE,signal_team,4,2
+SMMS0022,S&T,SMMS,BSP-BLSP-J,17.57,Cable insulation test,2,2026-10-25,1,150,15,LINE,signal_team,4,2
+SMMS0023,S&T,SMMS,BSP-BLSP-J,12.06,Point machine maintenance,4,2026-11-23,-28,120,15,LINE,signal_team,4,0
+SMMS0024,S&T,SMMS,TLD-SKR,144.18,Axle counter calibration,3,2026-10-30,-4,80,15,LINE,signal_team,4,2
+SMMS0025,S&T,SMMS,BLSP-J-KRBA,35.71,Point machine maintenance,4,2026-11-02,-7,120,15,LINE,signal_team,4,3
+SMMS0026,S&T,SMMS,SKR-DPK,169.38,Track circuit fault,4,2026-11-11,-16,100,15,LINE,signal_team,4,1
+SMMS0027,S&T,SMMS,AKLT-TLD,121.23,Signal lamp/relay failure,5,2026-10-25,1,90,15,LINE,signal_team,4,2
+SMMS0028,S&T,SMMS,SKR-DPK,170.3,Cable insulation test,2,2026-11-03,-8,150,15,LINE,signal_team,4,0
+SMMS0029,S&T,SMMS,KRBA-USLP,48.94,Signal lamp/relay failure,5,2026-10-28,-2,90,15,LINE,signal_team,4,2
+SMMS0030,S&T,SMMS,USLP-PND,70.46,Axle counter calibration,3,2026-10-17,9,80,15,LINE,signal_team,4,1
+SMMS0031,S&T,SMMS,BLSP-J-KRBA,25.01,Signal lamp/relay failure,5,2026-10-24,2,90,15,LINE,signal_team,4,2
+SMMS0032,S&T,SMMS,PND-AKLT,109.61,Axle counter calibration,3,2026-10-26,0,80,15,LINE,signal_team,4,0
+SMMS0033,S&T,SMMS,TLD-SKR,138.51,Track circuit fault,4,2026-11-25,-30,100,15,LINE,signal_team,4,2
+SMMS0034,S&T,SMMS,BSP-BLSP-J,8.62,Signal lamp/relay failure,5,2026-11-03,-8,90,15,LINE,signal_team,4,3
+SMMS0035,S&T,SMMS,SKR-DPK,169.95,Point machine maintenance,4,2026-11-22,-27,120,15,LINE,signal_team,4,4
+SMMS0036,S&T,SMMS,KRBA-USLP,65.14,Cable insulation test,2,2026-10-12,14,150,15,LINE,signal_team,4,3
+SMMS0037,S&T,SMMS,DPK-RIG,197.04,Axle counter calibration,3,2026-10-26,0,80,15,LINE,signal_team,4,2
+SMMS0038,S&T,SMMS,TLD-SKR,152.62,Track circuit fault,4,2026-10-25,1,100,15,LINE,signal_team,4,1
+SMMS0039,S&T,SMMS,SKR-DPK,165.43,Point machine maintenance,4,2026-10-29,-3,120,15,LINE,signal_team,4,2
+SMMS0040,S&T,SMMS,TLD-SKR,140.88,Axle counter calibration,3,2026-11-10,-15,80,15,LINE,signal_team,4,3
+SMMS0041,S&T,SMMS,PND-AKLT,90.86,Track circuit fault,4,2026-11-16,-21,100,15,LINE,signal_team,4,0
+SMMS0042,S&T,SMMS,BLSP-J-KRBA,31.4,Axle counter calibration,3,2026-11-09,-14,80,15,LINE,signal_team,4,3
+SMMS0043,S&T,SMMS,SKR-DPK,175.06,Axle counter calibration,3,2026-11-22,-27,80,15,LINE,signal_team,4,0
+SMMS0044,S&T,SMMS,KRBA-USLP,47.19,Signal lamp/relay failure,5,2026-11-10,-15,90,15,LINE,signal_team,4,1
+SMMS0045,S&T,SMMS,KRBA-USLP,63.24,Track circuit fault,4,2026-10-22,4,100,15,LINE,signal_team,4,1
+SMMS0046,S&T,SMMS,KRBA-USLP,58.15,Axle counter calibration,3,2026-10-24,2,80,15,LINE,signal_team,4,3
+SMMS0047,S&T,SMMS,BSP-BLSP-J,12.86,Track circuit fault,4,2026-10-19,7,100,15,LINE,signal_team,4,2
+SMMS0048,S&T,SMMS,BLSP-J-KRBA,43.27,Track circuit fault,4,2026-11-29,-34,100,15,LINE,signal_team,4,0
+SMMS0049,S&T,SMMS,BLSP-J-KRBA,38.84,Point machine maintenance,4,2026-10-29,-3,120,15,LINE,signal_team,4,0
+SMMS0050,S&T,SMMS,SKR-DPK,166.74,Axle counter calibration,3,2026-10-28,-2,80,15,LINE,signal_team,4,5
+SMMS0051,S&T,SMMS,DPK-RIG,196.16,Track circuit fault,4,2026-10-12,14,100,15,LINE,signal_team,4,1
+SMMS0052,S&T,SMMS,AKLT-TLD,124.93,Point machine maintenance,4,2026-10-20,6,120,15,LINE,signal_team,4,1
+SMMS0053,S&T,SMMS,TLD-SKR,132.45,Cable insulation test,2,2026-11-14,-19,150,15,LINE,signal_team,4,1
+SMMS0054,S&T,SMMS,PND-AKLT,92.05,Axle counter calibration,3,2026-10-21,5,80,15,LINE,signal_team,4,2
+TDMS0000,TRD,TDMS,BSP-BLSP-J,10.88,Dropper replacement,2,2026-11-25,-30,100,25,POWER,ohe_tower_wagon,6,2
+TDMS0001,TRD,TDMS,USLP-PND,75.64,Catenary mast repair,4,2026-11-27,-32,180,25,POWER,ohe_tower_wagon,6,2
+TDMS0002,TRD,TDMS,AKLT-TLD,120.05,Catenary mast repair,4,2026-10-24,2,180,25,POWER,ohe_tower_wagon,6,1
+TDMS0003,TRD,TDMS,PND-AKLT,106.63,Sectioning post maintenance,3,2026-11-29,-34,90,25,POWER,ohe_tower_wagon,6,0
+TDMS0004,TRD,TDMS,AKLT-TLD,129.92,Insulator replacement,4,2026-10-30,-4,150,25,POWER,ohe_tower_wagon,6,1
+TDMS0005,TRD,TDMS,PND-AKLT,98.53,Insulator replacement,4,2026-10-11,15,150,25,POWER,ohe_tower_wagon,6,2
+TDMS0006,TRD,TDMS,TLD-SKR,139.27,Catenary mast repair,4,2026-11-07,-12,180,25,POWER,ohe_tower_wagon,6,3
+TDMS0007,TRD,TDMS,USLP-PND,79.0,Dropper replacement,2,2026-11-05,-10,100,25,POWER,ohe_tower_wagon,6,4
+TDMS0008,TRD,TDMS,KRBA-USLP,52.8,Sectioning post maintenance,3,2026-10-11,15,90,25,POWER,ohe_tower_wagon,6,4
+TDMS0009,TRD,TDMS,PND-AKLT,102.05,OHE wire tension adjustment,3,2026-11-16,-21,120,25,POWER,ohe_tower_wagon,6,1
+TDMS0010,TRD,TDMS,USLP-PND,72.57,Catenary mast repair,4,2026-10-17,9,180,25,POWER,ohe_tower_wagon,6,2
+TDMS0011,TRD,TDMS,AKLT-TLD,122.43,Sectioning post maintenance,3,2026-11-03,-8,90,25,POWER,ohe_tower_wagon,6,1
+TDMS0012,TRD,TDMS,SKR-DPK,172.92,Catenary mast repair,4,2026-10-13,13,180,25,POWER,ohe_tower_wagon,6,5
+TDMS0013,TRD,TDMS,KRBA-USLP,44.7,Insulator replacement,4,2026-11-03,-8,150,25,POWER,ohe_tower_wagon,6,0
+TDMS0014,TRD,TDMS,USLP-PND,72.06,Sectioning post maintenance,3,2026-11-22,-27,90,25,POWER,ohe_tower_wagon,6,1
+TDMS0015,TRD,TDMS,DPK-RIG,191.07,Dropper replacement,2,2026-10-23,3,100,25,POWER,ohe_tower_wagon,6,0
+TDMS0016,TRD,TDMS,KRBA-USLP,45.88,Catenary mast repair,4,2026-11-15,-20,180,25,POWER,ohe_tower_wagon,6,2
+TDMS0017,TRD,TDMS,TLD-SKR,138.64,Insulator replacement,4,2026-11-17,-22,150,25,POWER,ohe_tower_wagon,6,1
+TDMS0018,TRD,TDMS,AKLT-TLD,114.27,OHE wire tension adjustment,3,2026-10-27,-1,120,25,POWER,ohe_tower_wagon,6,0
+TDMS0019,TRD,TDMS,BSP-BLSP-J,19.34,OHE wire tension adjustment,3,2026-10-14,12,120,25,POWER,ohe_tower_wagon,6,2
+TDMS0020,TRD,TDMS,KRBA-USLP,65.3,OHE wire tension adjustment,3,2026-11-27,-32,120,25,POWER,ohe_tower_wagon,6,2
+TDMS0021,TRD,TDMS,BSP-BLSP-J,16.82,Insulator replacement,4,2026-11-18,-23,150,25,POWER,ohe_tower_wagon,6,2
+TDMS0022,TRD,TDMS,SKR-DPK,156.18,Catenary mast repair,4,2026-11-10,-15,180,25,POWER,ohe_tower_wagon,6,1
+TDMS0023,TRD,TDMS,BLSP-J-KRBA,43.47,Sectioning post maintenance,3,2026-11-25,-30,90,25,POWER,ohe_tower_wagon,6,0
+TDMS0024,TRD,TDMS,USLP-PND,76.41,Insulator replacement,4,2026-11-13,-18,150,25,POWER,ohe_tower_wagon,6,0
+TDMS0025,TRD,TDMS,BSP-BLSP-J,1.0,Insulator replacement,4,2026-11-27,-32,150,25,POWER,ohe_tower_wagon,6,0
+TDMS0026,TRD,TDMS,SKR-DPK,154.45,Catenary mast repair,4,2026-11-28,-33,180,25,POWER,ohe_tower_wagon,6,2
+TDMS0027,TRD,TDMS,AKLT-TLD,124.93,Dropper replacement,2,2026-11-26,-31,100,25,POWER,ohe_tower_wagon,6,1
+TDMS0028,TRD,TDMS,DPK-RIG,181.49,Catenary mast repair,4,2026-11-13,-18,180,25,POWER,ohe_tower_wagon,6,1
+TDMS0029,TRD,TDMS,BLSP-J-KRBA,38.25,Dropper replacement,2,2026-11-15,-20,100,25,POWER,ohe_tower_wagon,6,2
+TDMS0030,TRD,TDMS,BSP-BLSP-J,18.02,Sectioning post maintenance,3,2026-11-01,-6,90,25,POWER,ohe_tower_wagon,6,3
+TDMS0031,TRD,TDMS,SKR-DPK,161.83,Dropper replacement,2,2026-11-13,-18,100,25,POWER,ohe_tower_wagon,6,1
+TDMS0032,TRD,TDMS,TLD-SKR,144.47,Sectioning post maintenance,3,2026-10-17,9,90,25,POWER,ohe_tower_wagon,6,1
+TDMS0033,TRD,TDMS,BSP-BLSP-J,10.5,OHE wire tension adjustment,3,2026-11-02,-7,120,25,POWER,ohe_tower_wagon,6,0
+TDMS0034,TRD,TDMS,BLSP-J-KRBA,23.41,Insulator replacement,4,2026-10-26,0,150,25,POWER,ohe_tower_wagon,6,2
+TDMS0035,TRD,TDMS,AKLT-TLD,116.59,Sectioning post maintenance,3,2026-10-16,10,90,25,POWER,ohe_tower_wagon,6,0
+TDMS0036,TRD,TDMS,DPK-RIG,193.36,Catenary mast repair,4,2026-10-22,4,180,25,POWER,ohe_tower_wagon,6,1
+TDMS0037,TRD,TDMS,USLP-PND,78.82,OHE wire tension adjustment,3,2026-10-29,-3,120,25,POWER,ohe_tower_wagon,6,0
+TDMS0038,TRD,TDMS,AKLT-TLD,126.07,OHE wire tension adjustment,3,2026-11-01,-6,120,25,POWER,ohe_tower_wagon,6,1
+TDMS0039,TRD,TDMS,TLD-SKR,150.91,Dropper replacement,2,2026-10-12,14,100,25,POWER,ohe_tower_wagon,6,2
+TDMS0040,TRD,TDMS,BLSP-J-KRBA,39.28,Insulator replacement,4,2026-11-24,-29,150,25,POWER,ohe_tower_wagon,6,1
+TDMS0041,TRD,TDMS,DPK-RIG,197.65,Dropper replacement,2,2026-11-20,-25,100,25,POWER,ohe_tower_wagon,6,0
+TDMS0042,TRD,TDMS,KRBA-USLP,56.05,Catenary mast repair,4,2026-11-07,-12,180,25,POWER,ohe_tower_wagon,6,0
+TDMS0043,TRD,TDMS,DPK-RIG,191.93,Catenary mast repair,4,2026-11-09,-14,180,25,POWER,ohe_tower_wagon,6,3
+TDMS0044,TRD,TDMS,PND-AKLT,101.96,OHE wire tension adjustment,3,2026-10-17,9,120,25,POWER,ohe_tower_wagon,6,2
