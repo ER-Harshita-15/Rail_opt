@@ -1,0 +1,4 @@
+method,tasks_scheduled,blocks,avg_utilization,trains_disrupted,goods_trains_disrupted,gain,block_cost,net_value,critical_sched,high_sched,medium_sched,low_sched,overdue_sched,violations,runtime_s
+CP-SAT,108/160,97,75%,911,554,44154,17700,26454,7/7,26/29,34/63,41/61,43/54,0,60.0
+greedy first-fit,109/160,100,74%,972,599,44093,18715,25378,7/7,26/29,33/63,43/61,43/54,0,0.38
+greedy value,105/160,95,74%,876,526,42842,17090,25752,7/7,26/29,34/63,38/61,43/54,0,0.49

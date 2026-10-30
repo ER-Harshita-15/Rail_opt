@@ -1,0 +1,15 @@
+#Step 1:
+pandas 
+numpy 
+#Step 2:
+scikit-learn
+lightgbm
+shap
+#Step 3:
+ortools
+fastapi
+streamlit
+plotly
+#Step 4:
+ortools
+streamlit

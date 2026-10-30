@@ -1,0 +1,5 @@
+week,window_min,free_pct,blocks,eligible_at_week_end,new_supply,scheduled,left_for_later,crew_util_pct
+1,23040,72.7,35,98,98,79,19,13.7
+2,24120,90.3,13,32,13,25,7,4.3
+3,23220,93.8,8,27,20,14,13,2.5
+4,23400,97.7,3,18,5,5,13,0.9
