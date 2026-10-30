@@ -1,0 +1,5 @@
+week,assignment_reward,block_cost,recomputed_net_value,reference_value,reference,matches
+1,38396,6175,32221,32221,solver objective,True
+2,5861,1680,4181,4181,solver objective,True
+3,2932,980,1952,1952,solver objective,True
+4,1307,405,902,902,solver objective,True

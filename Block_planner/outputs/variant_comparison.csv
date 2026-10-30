@@ -1,0 +1,6 @@
+variant,monthly_assigned,scheduled,placeable_unscheduled,assigned_not_scheduled,on_time_pct,week1_tasks,week1_share_pct,peak_to_mean_work,blocks,merged_blocks,trains,net_value,crit_high,crit_high_mean_day,overdue_mean_day,newly_late,violations,runtime_s
+"v1: simple monthly, static carry-over",134,123,13,11,91.8,98,79.7,3.14,60,37,475,39427,33/33,0.91,0.78,4,0,12.9
+"blocks monthly, static carry-over",129,123,13,6,95.3,87,70.7,2.76,55,38,410,39904,33/33,1.76,0.96,9,0,3.1
+blocks monthly + weekly re-plan,129,123,13,6,95.3,87,70.7,2.76,55,38,410,39904,33/33,1.76,0.96,9,0,4.2
+blocks + re-plan + deferral & balancing,124,122,14,5,91.9,79,64.8,2.56,58,35,436,39217,33/33,1.03,0.84,6,0,3.7
+... + due backfill (= default),124,123,13,5,88.7,79,64.2,2.53,59,35,435,39256,33/33,1.03,0.84,6,0,3.9

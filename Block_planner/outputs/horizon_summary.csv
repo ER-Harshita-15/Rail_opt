@@ -1,0 +1,5 @@
+week,status,pool,backfilled,scheduled,carried_over,blocks,solver_objective,merged_blocks,trains_disrupted,net_value,rel_gap,proven_optimal,violations,wall_time_s
+1,OPTIMAL,88,9,79,9,35,32221,22,309,32221,0.0,True,0,0.42
+2,OPTIMAL,38,14,25,13,13,4181,8,70,4181,0.0,True,0,0.29
+3,OPTIMAL,37,17,14,23,8,1952,4,40,1952,0.0,True,0,0.04
+4,OPTIMAL,28,18,5,23,3,902,1,16,902,0.0,True,0,0.05

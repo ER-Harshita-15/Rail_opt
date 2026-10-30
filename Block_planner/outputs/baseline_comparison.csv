@@ -1,0 +1,19 @@
+kpi,key,optimised,manual_mean,manual_best_order,manual_worst_order,verdict
+Tasks scheduled,tasks_scheduled,123.0,136.0,136.0,136.0,worse than all orders
+Blocks opened,blocks,59.0,123.17,123.0,124.0,better than all orders
+Multi-department blocks,merged_blocks,35.0,0.0,,,info
+Block minutes taken,block_minutes,10620.0,22170.0,22140.0,22320.0,better than all orders
+Trains disrupted (sum over blocks),trains_disrupted,435.0,1172.0,1162.0,1181.0,better than all orders
+  of which goods trains,goods_trains_disrupted,270.0,734.0,728.0,741.0,better than all orders
+Net value (objective),net_value,39256.0,26310.67,26442.0,26130.0,better than all orders
+Tasks per block,tasks_per_block,2.08,1.11,1.11,1.1,better than all orders
+Productive crew time (%),productive_pct,85.8,85.78,85.8,85.7,within the manual range
+"Block occupancy, busiest crew (%)",block_occupancy_pct,80.0,75.12,,,info
+Overdue tasks scheduled,overdue_scheduled,45.0,45.0,45.0,45.0,equal to all orders
+Overdue tasks: mean start day,overdue_mean_day,0.84,1.81,1.6,2.04,better than all orders
+Critical/high tasks scheduled,crit_high_scheduled,33.0,33.0,33.0,33.0,equal to all orders
+Critical/high: mean start day,crit_high_mean_day,1.03,2.4,1.88,2.82,better than all orders
+Task-days past due (proxy),days_past_due_total,416.0,461.17,456.0,467.0,better than all orders
+Not-yet-overdue tasks finished late,newly_late,6.0,7.0,4.0,10.0,within the manual range
+Share of tasks in week 1 (%),week1_share_pct,64.2,68.5,67.6,69.1,better than all orders
+Peak / mean weekly workload,peak_to_mean_work,2.53,2.69,2.63,2.73,better than all orders

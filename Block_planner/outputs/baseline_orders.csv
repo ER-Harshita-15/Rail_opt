@@ -1,0 +1,7 @@
+order,violations,tasks_scheduled,placeable_tasks,blocks,merged_blocks,block_minutes,trains_disrupted,goods_trains_disrupted,net_value,tasks_per_block,productive_pct,block_occupancy_pct,overdue_cleared,overdue_mean_day,overdue_scheduled,overdue_total,crit_high_cleared,crit_high_mean_day,crit_high_scheduled,crit_high_total,days_past_due_total,newly_late,week1_share_pct,peak_to_mean_work
+ENGG > S&T > TRD,0,136,136,123,0,22140,1181,731,26424,1.11,85.8,75.2,45/45,1.78,45,45,33/33,2.18,33,33,460,6,68.4,2.68
+ENGG > TRD > S&T,0,136,136,123,0,22140,1174,736,26227,1.11,85.8,75.2,45/45,1.98,45,45,33/33,2.67,33,33,463,4,69.1,2.73
+S&T > ENGG > TRD,0,136,136,124,0,22320,1175,741,26430,1.1,85.7,74.7,45/45,1.6,45,45,33/33,1.88,33,33,456,10,67.6,2.63
+S&T > TRD > ENGG,0,136,136,123,0,22140,1167,728,26442,1.11,85.8,75.2,45/45,1.62,45,45,33/33,2.24,33,33,457,9,68.4,2.66
+TRD > ENGG > S&T,0,136,136,123,0,22140,1162,733,26211,1.11,85.8,75.2,45/45,2.04,45,45,33/33,2.82,33,33,467,4,69.1,2.73
+TRD > S&T > ENGG,0,136,136,123,0,22140,1173,735,26130,1.11,85.8,75.2,45/45,1.84,45,45,33/33,2.64,33,33,464,9,68.4,2.68

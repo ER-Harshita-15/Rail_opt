@@ -1,0 +1,5 @@
+week,window_count,window_min,selected_block_min,free_window_min,free_pct,blocks,eligible_at_week_end,eligible_work_min,new_supply,scheduled,left_for_later,crew_work_min,crew_setup_min,crew_util_pct
+1,128,23040,6300,16740,72.7,35,98,11960,98,79,19,8150,1320,13.7
+2,134,24120,2340,21780,90.3,13,32,4020,13,25,7,2700,445,4.3
+3,129,23220,1440,21780,93.8,8,26,3365,20,14,12,1490,260,2.5
+4,130,23400,540,22860,97.7,3,18,2320,5,5,13,560,105,0.9
