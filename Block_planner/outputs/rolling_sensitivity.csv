@@ -1,0 +1,14 @@
+vary,value,strategy,events,total_moved,total_dropped,total_blocks_changed,broken_commitments,emergencies_unplaced,deadlines_relaxed,max_emergency_response_days,mean_emergency_response_days,tasks_scheduled,blocks,trains_disrupted,net_value,days_past_due_total,final_violations
+move_penalty,0,stable,5,35,0,45,0,0,0,1,0.67,130,64,468,42373,425,0
+move_penalty,20,stable,5,12,0,25,0,0,0,1,0.67,130,62,459,42339,423,0
+move_penalty,40,stable,5,6,0,17,0,0,0,1,0.67,130,61,446,42194,423,0
+move_penalty,100,stable,5,1,0,9,0,0,0,1,0.67,130,64,462,41889,421,0
+move_penalty,300,stable,5,0,0,7,0,0,0,1,0.67,130,65,469,41788,421,0
+lock_days (no prices),0,stable,5,56,1,62,19,0,0,1,0.67,129,61,448,42555,426,0
+lock_days (no prices),1,stable,5,43,1,54,7,0,0,1,0.67,129,62,456,42438,429,0
+lock_days (no prices),2,stable,5,36,1,47,0,0,0,1,0.67,129,63,467,42373,427,0
+lock_days (no prices),3,stable,5,35,0,48,0,0,0,1,0.67,130,64,466,42324,427,0
+emergency_max_delay,0,stable,5,6,0,17,0,0,1,1,0.33,130,61,449,42170,422,0
+emergency_max_delay,1,stable,5,6,0,17,0,0,0,1,0.67,130,61,446,42194,423,0
+emergency_max_delay,2,stable,5,6,0,17,0,0,0,1,0.67,130,61,446,42194,423,0
+emergency_max_delay,-1,stable,5,6,0,17,0,0,0,1,0.67,130,61,446,42194,423,0

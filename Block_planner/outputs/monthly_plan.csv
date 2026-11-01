@@ -92,7 +92,6 @@ TMS0004,1,ENGG,PND-AKLT,Fish-plate renewal,LOW,80
 TMS0005,1,ENGG,PND-AKLT,Rail fracture,LOW,140
 TMS0056,1,ENGG,PND-AKLT,Fish-plate renewal,LOW,80
 SMMS0009,1,S&T,SKR-DPK,Axle counter calibration,LOW,95
-SMMS0035,1,S&T,SKR-DPK,Point machine maintenance,LOW,135
 SMMS0043,1,S&T,SKR-DPK,Axle counter calibration,LOW,95
 TDMS0031,1,TRD,SKR-DPK,Dropper replacement,LOW,125
 SMMS0040,1,S&T,TLD-SKR,Axle counter calibration,MEDIUM,95
@@ -120,6 +119,7 @@ TMS0028,2,ENGG,KRBA-USLP,Fish-plate renewal,MEDIUM,80
 SMMS0011,2,S&T,PND-AKLT,Point machine maintenance,LOW,135
 TDMS0003,2,TRD,PND-AKLT,Sectioning post maintenance,LOW,115
 TMS0043,2,ENGG,PND-AKLT,Fish-plate renewal,LOW,80
+SMMS0035,2,S&T,SKR-DPK,Point machine maintenance,LOW,135
 SMMS0033,2,S&T,TLD-SKR,Track circuit fault,MEDIUM,115
 TMS0015,2,ENGG,TLD-SKR,Track geometry defect,MEDIUM,170
 TMS0042,3,ENGG,TLD-SKR,Weld repair,MEDIUM,110

@@ -19,6 +19,7 @@ import bdms_export as bx
 import horizons as h
 import metrics as m
 import optimizer as o
+import replan as rp
 import whatif as wi
 
 ROOT = Path(__file__).parent
@@ -100,7 +101,8 @@ with st.sidebar:
             st.success("Done - reload the page.") if r.returncode == 0 else st.error(r.stderr[-800:])
     st.caption("The what-if and baseline use the default 14-day earliest-start rule.")
 
-tabs = st.tabs(["Overview", "Block calendar", "Monthly plan", "What-if", "Unscheduled & diagnostics", "Export"])
+tabs = st.tabs(["Overview", "Block calendar", "Monthly plan", "What-if", "Rolling re-plan",
+                "Unscheduled & diagnostics", "Export"])
 
 # ---------------------------------------------------------------- overview
 with tabs[0]:
@@ -192,7 +194,8 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("What-if: emergency defect")
     st.caption("Re-optimises the chosen week with the emergency task forced in and compares it with the current plan. "
-               "No stability objective yet: unrelated tasks may move (Step 6 will keep the plan stable).")
+               "This preview has NO stability objective, so unrelated tasks may move - the 'Rolling re-plan' tab "
+               "keeps committed blocks and prices changes.")
     f1, f2, f3 = st.columns(3)
     dept = f1.selectbox("Department", list(DEPT_COLORS), key="wi_dept")
     section = f2.selectbox("Section", sorted(T.section_id.unique()), key="wi_section")
@@ -246,8 +249,77 @@ with tabs[3]:
                             st.dataframe(r["moved"], hide_index=True)
                     gantt(r["new_plan"], f"Week {r['week']} after the emergency task")
 
-# ---------------------------------------------------------------- unscheduled
+# ---------------------------------------------------------------- rolling re-plan
 with tabs[4]:
+    st.subheader("Rolling re-planning: new defects and emergencies")
+    st.caption("At the start of the arrival day, blocks of earlier days are executed, blocks inside the lock window are "
+               "frozen, the next 14 days are re-optimised with a price on every change, and later blocks are left alone. "
+               "Three strategies on the same events: stable (this system), full re-optimisation, and a manual-style patch.")
+    summ_path = ROOT / "outputs" / "rolling_summary.csv"
+    if summ_path.exists():
+        rs = pd.read_csv(summ_path)
+        st.markdown("**Scenario run by `python replan.py`** (5 events: 3 emergencies, 4 routine defects, synthetic)")
+        cols = ["strategy", "total_moved", "total_dropped", "total_blocks_changed", "broken_commitments",
+                "mean_emergency_response_days", "tasks_scheduled", "blocks", "trains_disrupted", "net_value"]
+        st.dataframe(rs[cols], hide_index=True, width="stretch")
+        ev_path = ROOT / "outputs" / "rolling_events.csv"
+        if ev_path.exists():
+            with st.expander("Per event"):
+                st.dataframe(pd.read_csv(ev_path), hide_index=True, width="stretch")
+        sens_path = ROOT / "outputs" / "rolling_sensitivity.csv"
+        if sens_path.exists():
+            sens = pd.read_csv(sens_path)
+            mp = sens[sens.vary == "move_penalty"]
+            a1, a2 = st.columns(2)
+            a1.plotly_chart(px.line(mp, x="value", y="total_moved", markers=True,
+                                    title="Tasks moved vs price per move", labels={"value": "move penalty"}),
+                            width="stretch")
+            a2.plotly_chart(px.line(mp, x="value", y="net_value", markers=True,
+                                    title="Net value vs price per move", labels={"value": "move penalty"}),
+                            width="stretch")
+    else:
+        st.info("Run `python replan.py` to produce the scenario results.")
+
+    st.markdown("---")
+    st.markdown("**Try one event on the saved plan**")
+    r1, r2, r3 = st.columns(3)
+    now_day = r1.slider("Arrival day (0 = first day)", 0, 20, 3, key="rp_day")
+    r_dept = r2.selectbox("Department", list(DEPT_COLORS), key="rp_dept")
+    r_sec = r3.selectbox("Section", sorted(T.section_id.unique()), key="rp_section")
+    q1, q2, q3, q4 = st.columns(4)
+    r_dur = q1.slider("Duration (min)", 30, 150, 90, 10, key="rp_dur")
+    r_lock = q2.slider("Lock days", 0, 4, rp.LOCK_DAYS, key="rp_lock")
+    r_move = q3.slider("Price per move", 0, 300, rp.MOVE_PENALTY, 10, key="rp_move")
+    r_kind = q4.selectbox("Kind", ["Emergency", "Routine"], key="rp_kind")
+    if st.button("Compare strategies", key="rp_btn"):
+        srow = sections[sections.section_id == r_sec].iloc[0]
+        emg = wi.make_emergency_task(
+            T, r_dept, r_sec, float(srow.km_start) + 5.0, r_dur, task_id="EMG-UI" if r_kind == "Emergency" else "NEW-UI",
+            overdue_days=1 - now_day if r_kind == "Emergency" else -(now_day + 15),
+            priority_score=0.95 if r_kind == "Emergency" else 0.45, tier="CRITICAL" if r_kind == "Emergency" else "MEDIUM",
+            severity=5 if r_kind == "Emergency" else 3)
+        event = [dict(day=now_day, kind="emergency" if r_kind == "Emergency" else "routine", tasks=emg)]
+        out_rows, plans = [], {}
+        with st.spinner("Re-planning with three strategies..."):
+            for strat in ("stable", "full", "patch"):
+                kw = dict(lock_days=r_lock, move_penalty=r_move) if strat == "stable" else {}
+                ev, sm, p, b, _ = rp.simulate(T, windows, plan, event, strat, workers=8, time_limit=15, **kw)
+                e = ev.iloc[0]
+                out_rows.append(dict(strategy=strat, moved=e.moved, dropped=e.dropped, blocks_changed=e.blocks_changed,
+                                     broken_commitments=e.broken_commitments, new_blocks=e.blocks_opened,
+                                     trains_change=e.trains_change, emergency_response_days=e.emergency_response_days,
+                                     net_value=e.net_value, valid=(e.violations == 0 and sm["final_violations"] == 0)))
+                plans[strat] = p
+        st.dataframe(pd.DataFrame(out_rows), hide_index=True, width="stretch")
+        st.caption("broken_commitments is counted against a 2-day lock. 'stable' keeps committed blocks and prices every "
+                   "move; 'full' may move anything; 'patch' only adds the new task.")
+        view = plans["stable"]
+        view = view[(view.date >= o.START + pd.Timedelta(days=now_day))
+                    & (view.date < o.START + pd.Timedelta(days=now_day + rp.LOOKAHEAD_DAYS))]
+        gantt(view, f"Stable plan, days {now_day}-{now_day + rp.LOOKAHEAD_DAYS - 1}")
+
+# ---------------------------------------------------------------- unscheduled
+with tabs[5]:
     st.subheader("Tasks not scheduled after the final week")
     u = res["unscheduled"]
     st.write(f"**{len(u)} of {len(T)} tasks** are unscheduled: "
@@ -266,7 +338,7 @@ with tabs[4]:
         st.dataframe(res["audit"], hide_index=True)
 
 # ---------------------------------------------------------------- export
-with tabs[5]:
+with tabs[6]:
     st.subheader("BDMS-style export")
     st.caption("Illustrative layout - the real BDMS fields are not available. Recommendations only: every request "
                "needs official approval.")

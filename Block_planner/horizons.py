@@ -180,15 +180,25 @@ def finish_plan_parallel(rows, T, W):
 
 def solve_weekly(tasks, windows, horizon_days=7, start=START, origin=None, task_ids=None,
                  section=None, merge=True, time_limit=30, workers=8, rel_gap_limit=0.0, seed=1,
-                 force_ids=()):
+                 force_ids=(), prior=None, move_penalty=0, drop_penalty=0, freeze=None, latest=None):
     """`tasks` must come from prepare_tasks(). `origin` = day 0 of the whole plan (B8).
-    force_ids: tasks that MUST be scheduled (diagnosis only: shows what placing a task costs)."""
+    force_ids: tasks that MUST be scheduled (diagnosis / emergencies).
+    Plan stability (Step 6, re-planning): prior = {task_id: window_id} of the plan already published.
+      A prior task that ends up in ANOTHER window costs `move_penalty`; one that ends up unscheduled
+      costs `drop_penalty` (on top of the value it no longer earns). info['objective'] is then
+      net_value - stability_penalty; info['net_value'] and info['stability_penalty'] are reported
+      separately. freeze = {task_id: window_id}: those tasks MUST stay in that window (committed work).
+    latest = {task_id: last allowed day index (from the plan origin)}: a deadline for urgent tasks.
+    Without prior / freeze / latest the model is exactly the Step 4 weekly model."""
     origin = origin if origin is not None else start
     T0 = tasks if task_ids is None else tasks[tasks.task_id.isin(set(task_ids))]
     W, T = o.scope(T0, windows, horizon_days, start, section)
     pairs = o.candidate_pairs(T, W)
     if "earliest_idx" in T:                                             # B10
         pairs = [(i, w) for (i, w) in pairs if (W.date[w] - origin).days >= T.earliest_idx[i]]
+    if latest:                                                          # deadlines (emergencies)
+        pairs = [(i, w) for (i, w) in pairs
+                 if T.task_id[i] not in latest or (W.date[w] - origin).days <= latest[T.task_id[i]]]
     unsched = o.find_unschedulable(T, W)
     unknown = sorted(set(T.gang_type) - set(o.GANGS))
     if unknown:
@@ -208,6 +218,14 @@ def solve_weekly(tasks, windows, horizon_days=7, start=START, origin=None, task_
 
     for i, ws in by_task.items():                                       # at most once
         m.Add(sum(x[i, w] for w in ws) <= 1)
+    wid_idx = {W.window_id[w]: w for w in W.index}
+    freeze_missing = []
+    for tid, wid in (freeze or {}).items():                             # committed work stays put
+        idx = T.index[T.task_id == tid]
+        if len(idx) and wid in wid_idx and (idx[0], wid_idx[wid]) in x:
+            m.Add(x[idx[0], wid_idx[wid]] == 1)
+        else:
+            freeze_missing.append(tid)
     forced_missing = []
     for tid in force_ids:                                               # diagnosis: force placement
         idx = T.index[T.task_id == tid]
@@ -249,6 +267,16 @@ def solve_weekly(tasks, windows, horizon_days=7, start=START, origin=None, task_
                                       (W.date[w] - origin).days) * x[i, w])
     for w in W.index:
         obj.append(-o.block_cost(W.trains_affected[w], W.goods_trains_affected[w]) * y[w])
+    stab_const, n_prior = 0, 0
+    if prior and (move_penalty or drop_penalty):                        # stability terms
+        for i in T.index:
+            tid = T.task_id[i]
+            if tid in prior and i in by_task:
+                n_prior += 1
+                stab_const -= int(drop_penalty)                         # penalty if unscheduled; cancelled below when placed
+                pw = wid_idx.get(prior[tid])
+                for w in by_task[i]:
+                    obj.append((int(drop_penalty) - (0 if w == pw else int(move_penalty))) * x[i, w])
     m.Maximize(sum(obj))
 
     s = cp_model.CpSolver()
@@ -265,16 +293,26 @@ def solve_weekly(tasks, windows, horizon_days=7, start=START, origin=None, task_
                 n_conflict_pairs=len(cpairs), n_tasks=len(T),
                 objective=None, bound=None, abs_gap=None, rel_gap=None)
     info["forced_missing"] = forced_missing
+    info["freeze_missing"] = freeze_missing
     if forced_missing:                                                  # no eligible window at all
         info["status"] = "INFEASIBLE_FORCED"
         return pd.DataFrame(), pd.DataFrame(), info, W, T
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
         return pd.DataFrame(), pd.DataFrame(), info, W, T
-    info["objective"] = int(round(s.ObjectiveValue()))
-    info["bound"] = s.BestObjectiveBound()
+    info["objective"] = int(round(s.ObjectiveValue())) + stab_const
+    info["bound"] = s.BestObjectiveBound() + stab_const
     info["abs_gap"], info["rel_gap"] = o.compute_gap(info["objective"], info["bound"])
     rows = pd.DataFrame([o._row(W, w, T.task_id[i]) for (i, w), var in x.items() if s.Value(var)])
     plan, blocks = finish_plan_parallel(rows, T, W)
+    if prior and (move_penalty or drop_penalty):
+        placed = dict(zip(plan.task_id, plan.window_id)) if len(plan) else {}
+        has_pair = {T.task_id[i] for i in by_task}
+        moved = sum(1 for t, w in prior.items() if t in placed and placed[t] != w)
+        dropped = sum(1 for t in prior if t in has_pair and t not in placed)
+        info["moved"], info["dropped"] = moved, dropped
+        info["unavoidable_drops"] = sum(1 for t in prior if t in set(T.task_id) and t not in has_pair)
+        info["stability_penalty"] = int(move_penalty) * moved + int(drop_penalty) * dropped
+        info["net_value"] = int(o.net_value(plan, blocks, origin)) if len(plan) else 0
     return plan, blocks, info, W, T
 
 

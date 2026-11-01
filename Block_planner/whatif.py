@@ -30,7 +30,7 @@ SOURCE = {"ENGG": "TMS", "S&T": "SMMS", "TRD": "TDMS"}
 
 def make_emergency_task(T, dept, section_id, km, duration_min, task="Emergency defect",
                         task_id="EMG-001", severity=5, priority_score=0.95, overdue_days=1,
-                        early_days=h.EARLY_DAYS):
+                        early_days=h.EARLY_DAYS, tier="CRITICAL", past_failures=0):
     """One-row task table in the same format as the prepared task table (W3, W4)."""
     like = T[T.dept == dept]
     if like.empty:
@@ -40,7 +40,7 @@ def make_emergency_task(T, dept, section_id, km, duration_min, task="Emergency d
     row.update(task_id=task_id, dept=dept, source_system=SOURCE.get(dept, row.get("source_system")),
                section_id=section_id, km=float(km), task=task, severity=int(severity),
                due_date="emergency", overdue_days=int(overdue_days), duration_min=int(duration_min),
-               past_failures=0, priority_score=float(priority_score), priority_rank=0, tier="CRITICAL",
+               past_failures=int(past_failures), priority_score=float(priority_score), priority_rank=0, tier=tier,
                crew_setup_min=gang_setup, need_min=int(duration_min) + gang_setup,
                earliest_idx=-int(overdue_days) - int(early_days))
     return pd.DataFrame([row])[list(T.columns)]

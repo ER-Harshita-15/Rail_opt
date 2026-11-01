@@ -262,13 +262,17 @@ class TestDashboardSmoke(unittest.TestCase):
         at = AppTest.from_file(str(m.ROOT / "app.py"), default_timeout=240)
         at.run()
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
-        self.assertEqual(len(at.tabs), 6)
+        self.assertEqual(len(at.tabs), 7)
         labels = [x.label for x in at.metric]
         self.assertIn("Blocks opened", labels)
         at.selectbox(key="wi_mode").set_value("Week 1").run()
         at.button(key="wi_btn").click().run(timeout=240)
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
         self.assertIn("Cost to the rest of the plan", [x.label for x in at.metric])
+        at.button(key="rp_btn").click().run(timeout=240)                     # Step 6: rolling re-plan tab
+        self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
+        tables = [d.value for d in at.dataframe if "strategy" in getattr(d.value, "columns", [])]
+        self.assertTrue(any(set(x.strategy) == {"stable", "full", "patch"} for x in tables))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,4 @@
+strategy,events,total_moved,total_dropped,total_blocks_changed,broken_commitments,emergencies_unplaced,deadlines_relaxed,max_emergency_response_days,mean_emergency_response_days,tasks_scheduled,blocks,trains_disrupted,net_value,days_past_due_total,final_violations
+stable,5,6,0,17,0,0,0,1,0.67,130,61,446,42194,423,0
+full,5,52,1,60,15,0,0,1,0.67,129,61,448,42555,436,0
+patch,5,0,0,7,0,0,0,1,0.33,130,66,487,41582,420,0
