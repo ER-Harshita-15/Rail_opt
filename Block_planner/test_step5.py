@@ -258,22 +258,32 @@ class TestRealResults(unittest.TestCase):
 @unittest.skipUnless(_HAS_RESULTS, "run horizons.py first")
 class TestDashboardSmoke(unittest.TestCase):
     def test_app_renders_and_whatif_runs(self):
+        from streamlit.navigation.page import calc_hash
         from streamlit.testing.v1 import AppTest
+        import ui
+
+        def goto(url_path):                       # callable st.Page pages are keyed by hash(url_path)
+            at._page_hash = calc_hash(url_path)
+            return at.run(timeout=240)
+
         at = AppTest.from_file(str(m.ROOT / "app.py"), default_timeout=240)
         at.run()
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
-        self.assertEqual(len(at.tabs), 7)
         labels = [x.label for x in at.metric]
         self.assertIn("Blocks opened", labels)
-        at.selectbox(key="wi_mode").set_value("Week 1").run()
+        for page in ("calendar", "monthly", "unscheduled", "export"):
+            goto(page)
+            self.assertEqual(len(at.exception), 0, (page, [e.value for e in at.exception]))
+        goto("what-if")
+        at.radio(key="wi_mode").set_value("Week 1")
         at.button(key="wi_btn").click().run(timeout=240)
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
-        self.assertIn("Cost to the rest of the plan", [x.label for x in at.metric])
-        at.button(key="rp_btn").click().run(timeout=240)                     # Step 6: rolling re-plan tab
+        self.assertIn("Cost to other work", [x.label for x in at.metric])
+        goto("rolling")
+        at.button(key="rp_btn").click().run(timeout=240)                     # Step 6: rolling re-plan page
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
         tables = [d.value for d in at.dataframe if "strategy" in getattr(d.value, "columns", [])]
-        self.assertTrue(any(set(x.strategy) == {"stable", "full", "patch"} for x in tables))
-
+        self.assertTrue(any(set(x.strategy) == set(ui.STRATEGIES.values()) for x in tables))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

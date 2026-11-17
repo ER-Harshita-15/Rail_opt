@@ -159,14 +159,19 @@ Streamlit prints a local URL in the terminal. Open that URL in a browser. The da
 
 ## 📊 Dashboard
 
-| Tab | What you can inspect |
-|:---|:---|
-| **Overview** | Optimized schedule compared with the simulated manual baseline |
-| **Block calendar** | Task timeline filtered by plan, week, department, and section |
-| **Monthly plan** | Weekly summary, department workload, and monthly-plan realization |
-| **What-if** | Impact of adding an emergency maintenance task |
-| **Unscheduled & diagnostics** | Unscheduled-task reasons, capacity information, and objective audit |
-| **Export** | Illustrative block-request and work-item CSV/JSON downloads |
+The dashboard is split into pages, grouped in the sidebar. Each page opens with a one-line explanation, and the sidebar has a **glossary** of railway and planning terms.
+
+| Group | Page | What you can inspect |
+|:---|:---|:---|
+| Plan | **Overview** | Headline KPIs, key takeaways and the full comparison with the simulated manual baseline |
+| Plan | **Block calendar** | Gantt view of blocks filtered by plan, week, department and section, with selection KPIs |
+| Plan | **Weekly & monthly view** | Per-week cards, department workload, section heatmap and monthly-plan realization |
+| Scenarios | **Emergency what-if** | Impact of adding an emergency task, with a recommended week |
+| Scenarios | **Rolling re-plan** | Stable vs full vs patch re-planning on saved and custom events |
+| Review | **Unscheduled work** | Why tasks were left out, in plain language, with filters and recommended actions |
+| Review | **Export requests** | Illustrative block-request and work-item CSV/JSON downloads |
+
+The theme lives in `.streamlit/config.toml` (read when Streamlit is started from the repository root) and the shared styling and labels live in `Block_planner/ui.py`.
 
 ## 📦 Outputs
 

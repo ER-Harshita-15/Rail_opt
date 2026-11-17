@@ -1,10 +1,13 @@
 """
 RailOpt - Automatic Block Planning dashboard (Step 5).
 
-Run:  streamlit run app.py        (needs outputs/ from `python horizons.py`)
+Run:  streamlit run Block_planner/app.py   (needs Block_planner/outputs/ from `python horizons.py`)
 
 Everything shown is built from SYNTHETIC data. The manual baseline is a SIMULATION of decentralised
 planning under stated assumptions (see baseline.py). The system recommends; officials approve.
+
+Layout: one Streamlit page per question a planner asks, grouped in the sidebar. Styling, colours and
+plain-language labels live in ui.py.
 """
 import subprocess
 import sys
@@ -20,15 +23,19 @@ import horizons as h
 import metrics as m
 import optimizer as o
 import replan as rp
+import ui
 import whatif as wi
 
 ROOT = Path(__file__).parent
-DEPT_COLORS = {"ENGG": "#2a6f97", "S&T": "#e07a1f", "TRD": "#6a994e"}
+DEPT_COLORS = ui.DEPT_COLORS
+CC = st.column_config
 
-st.set_page_config(page_title="RailOpt - Automatic Block Planning", layout="wide")
+st.set_page_config(page_title="RailOpt - Automatic Block Planning", page_icon="🚆", layout="wide")
+ui.setup()
 
 
-@st.cache_data(show_spinner=False)
+# ================================================================ data
+@st.cache_data(show_spinner="Loading the plan...")
 def load_all():
     T, windows = m.load_inputs()
     return T, windows, m.load_results(), pd.read_csv(o.DATA / "sections.csv")
@@ -41,37 +48,10 @@ def manual_runs():
     return base, plans
 
 
-def gantt_frame(plan):
-    d = plan.copy()
-    d["start"] = d.date + pd.to_timedelta(d.start_min, unit="m")
-    d["end"] = d.date + pd.to_timedelta(d.end_min, unit="m")
-    d["lane"] = d.section_id + "  |  " + d.dept
-    return d
-
-
-def gantt(plan, title):
-    d = gantt_frame(plan)
-    if d.empty:
-        st.info("Nothing to show for this selection.")
-        return
-    fig = px.timeline(d, x_start="start", x_end="end", y="lane", color="dept", color_discrete_map=DEPT_COLORS,
-                      hover_data={"task_id": True, "task": True, "tier": True, "km": True, "start": "|%a %d-%b %H:%M",
-                                  "end": "|%H:%M", "lane": False, "dept": False}, title=title)
-    fig.update_yaxes(autorange="reversed", title=None)
-    fig.update_xaxes(title=None)
-    fig.update_layout(height=max(380, 26 * d.lane.nunique() + 140), legend_title_text="Department",
-                      margin=dict(l=10, r=10, t=50, b=10))
-    st.plotly_chart(fig, width="stretch")
-
-
-def delta(a, b):
-    if b in (None, 0) or a is None:
-        return None
-    return f"{(a - b) / abs(b) * 100:+.0f}% vs manual mean"
-
-
 if not (ROOT / "outputs" / "block_plan_4w.csv").exists():
-    st.error("No plan found. Run `python horizons.py` first, then reload this page.")
+    ui.hero("RailOpt", "Automatic railway maintenance block planning")
+    st.error("**No plan found yet.** Generate one from the repository root, then reload this page:")
+    st.code("python Block_planner/horizons.py --no-ablation", language="bash")
     st.stop()
 
 T, windows, res, sections = load_all()
@@ -81,276 +61,548 @@ ai = m.kpis(plan, blocks, T, windows)
 cmp = bl.compare(ai, base)
 mean = base.select_dtypes("number").mean()
 best = bl.best_order(base)
+WEEKS = sorted(int(w) for w in plan.week.unique())
+SECTIONS = sorted(T.section_id.unique())
+END = o.START + pd.Timedelta(days=7 * len(WEEKS) - 1)
 
-# ---------------------------------------------------------------- sidebar
+
+# ================================================================ helpers
+def pct(a, b):
+    return None if b in (None, 0) or a is None else (a - b) / abs(b) * 100
+
+
+def delta(a, b, suffix=" vs manual"):
+    p = pct(a, b)
+    return None if p is None else f"{p:+.0f}%{suffix}"
+
+
+def tidy(fig):
+    """Drop plotly-express legend titles (they collide with chart titles) and keep the legend top-left."""
+    fig.update_layout(legend_title_text=None, legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0),
+                      uniformtext_minsize=10, uniformtext_mode="hide")
+    fig.update_traces(textangle=0, selector=dict(type="bar"))
+    return fig
+
+
+def gantt(p, title, height_per_lane=24):
+    if p.empty:
+        st.info("Nothing to show for this selection - try more sections or another week.")
+        return
+    d = p.copy()
+    d["start"] = d.date + pd.to_timedelta(d.start_min, unit="m")
+    d["end"] = d.date + pd.to_timedelta(d.end_min, unit="m")
+    d["Section"] = d.section_id + "  ·  " + d.dept
+    d["Department"] = d.dept.map(ui.DEPT_NAMES)
+    d["Time"] = d.start_min.map(ui.hhmm) + "-" + d.end_min.map(ui.hhmm)
+    d = d.sort_values(["section_id", "dept"])
+    fig = px.timeline(d, x_start="start", x_end="end", y="Section", color="dept", color_discrete_map=DEPT_COLORS,
+                      custom_data=["task_id", "task", "tier", "km", "Time", "Department"], title=title,
+                      category_orders={"Section": list(d.Section.drop_duplicates())})
+    fig.update_traces(hovertemplate="<b>%{customdata[1]}</b><br>%{customdata[0]} · %{customdata[5]}<br>"
+                                    "Tier: %{customdata[2]} · km %{customdata[3]}<br>%{x|%a %d %b}, "
+                                    "%{customdata[4]}<extra></extra>", marker_line_width=0)
+    fig.update_yaxes(autorange=True, title=None)
+    fig.update_xaxes(title=None, tickformat="%a %d %b", showgrid=True)
+    fig.update_layout(height=max(360, height_per_lane * d.Section.nunique() + 140), showlegend=False)
+    st.plotly_chart(tidy(fig), width="stretch")
+
+
+def task_table(p):
+    t = p.sort_values(["date", "start_min"]).assign(
+        day=lambda d: d.date.dt.strftime("%a %d %b"), start=lambda d: d.start_min.map(ui.hhmm),
+        end=lambda d: d.end_min.map(ui.hhmm))
+    st.dataframe(t[["day", "start", "end", "section_id", "dept", "task_id", "task", "tier", "km"]], hide_index=True,
+                 width="stretch", column_config={
+                     "day": "Day", "start": "Start", "end": "End", "section_id": "Section", "dept": "Dept",
+                     "task_id": "Task ID", "task": "Work", "tier": "Priority", "km": CC.NumberColumn("km", format="%.1f")})
+
+
+def week_label(w):
+    s = o.START + pd.Timedelta(days=7 * (int(w) - 1))
+    return f"Week {int(w)}  ({s:%d %b} - {s + pd.Timedelta(days=6):%d %b})"
+
+
+# ================================================================ pages
+def page_overview():
+    ui.hero("Maintenance block plan at a glance",
+            f"{len(WEEKS)}-week plan, {o.START:%d %b} - {END:%d %b %Y}, for {len(T)} maintenance tasks across "
+            f"{len(SECTIONS)} sections and three departments, compared with simulated manual planning.")
+    ui.steps([("Collect work", "Defects and overdue tasks from TMS, SMMS and TDMS"),
+              ("Prioritise", "Score criticality, urgency, failure risk and traffic impact"),
+              ("Optimise", "Fit tasks into corridor windows and share blocks across departments"),
+              ("Review & export", "Officials check the plan and send block requests")])
+
+    ui.section("Headline results", "RailOpt's optimised plan compared with the average of 6 simulated manual plans.")
+    c = st.columns(5)
+    c[0].metric("Blocks opened", ai["blocks"], delta(ai["blocks"], mean.blocks), delta_color="inverse",
+                help="Fewer blocks = fewer track closures. Joint blocks let several departments work at once.")
+    c[1].metric("Trains disrupted", ai["trains_disrupted"], delta(ai["trains_disrupted"], mean.trains_disrupted),
+                delta_color="inverse", help="Trains passing through a section while it is blocked, summed over blocks.")
+    c[2].metric("Joint blocks", ai["merged_blocks"], f"{ai['merged_blocks'] / max(ai['blocks'], 1):.0%} of all blocks",
+                delta_color="off", delta_arrow="off", help="Blocks shared by two or more departments. Manual planning has none.")
+    c[3].metric("Overdue tasks scheduled", ai["overdue_cleared"],
+                f"start day {ai['overdue_mean_day']} vs {mean.overdue_mean_day:.1f}", delta_color="off", delta_arrow="off",
+                help="All overdue work is scheduled. Lower start day = cleared sooner.")
+    c[4].metric("Tasks scheduled", f"{ai['tasks_scheduled']} / {ai['placeable_tasks']}",
+                f"{ai['tasks_scheduled'] - mean.tasks_scheduled:+.0f} vs manual",
+                help="Tasks that fit at least one window. RailOpt skips some low-value tasks on purpose - see below.")
+
+    fewer_b = mean.blocks - ai["blocks"]
+    fewer_t = mean.trains_disrupted - ai["trains_disrupted"]
+    ui.takeaways([
+        f"Opens <b>{fewer_b:.0f} fewer blocks</b> ({-pct(ai['blocks'], mean.blocks):.0f}% less) by letting departments "
+        f"share {ai['merged_blocks']} blocks.",
+        f"Disrupts <b>{fewer_t:.0f} fewer trains</b> ({-pct(ai['trains_disrupted'], mean.trains_disrupted):.0f}% less) "
+        "by choosing low-traffic windows.",
+        f"Clears overdue work sooner: mean start day <b>{ai['overdue_mean_day']}</b> vs {mean.overdue_mean_day:.1f} "
+        "for manual planning.",
+        f"Trade-off: schedules <b>{mean.tasks_scheduled - ai['tasks_scheduled']:.0f} fewer tasks</b>. These are "
+        "low-priority jobs whose block would cost more than the work is worth now; they move to the next cycle.",
+    ])
+
+    left, right = st.columns(2)
+    with left:
+        chart = pd.DataFrame({
+            "KPI": ["Blocks opened", "Trains disrupted ÷10", "Task-days past due ÷10"] * 2,
+            "Plan": ["RailOpt"] * 3 + ["Manual (mean)"] * 3,
+            "Value": [ai["blocks"], ai["trains_disrupted"] / 10, ai["days_past_due_total"] / 10,
+                      mean.blocks, mean.trains_disrupted / 10, mean.days_past_due_total / 10]})
+        fig = px.bar(chart, x="KPI", y="Value", color="Plan", barmode="group", text_auto=".0f",
+                     title="Lower is better", color_discrete_sequence=ui.PLAN_COLORS)
+        fig.update_layout(xaxis_title=None, yaxis_title=None, height=360)
+        st.plotly_chart(tidy(fig), width="stretch")
+    with right:
+        wk = h.workload_profile(plan, blocks, plan.week.max())[0].assign(Plan="RailOpt")
+        mp, mb = mplans[best]
+        wm = h.workload_profile(mp, mb, plan.week.max())[0].assign(Plan="Manual (best order)")
+        fig = px.bar(pd.concat([wk, wm]), x="week", y="tasks", color="Plan", barmode="group", text_auto=True,
+                     title="Tasks per week", color_discrete_sequence=ui.PLAN_COLORS)
+        fig.update_layout(xaxis_title="Week", yaxis_title="Tasks", height=360, xaxis=dict(dtick=1))
+        st.plotly_chart(tidy(fig), width="stretch")
+
+    ui.section("Full comparison", "Each row is one measure. The verdict compares RailOpt with all 6 manual orders, "
+                                  "not just the average.")
+    show = cmp.drop(columns="key").assign(verdict=lambda d: d.verdict.map(ui.VERDICTS).fillna(d.verdict),
+                                          kpi=lambda d: d.kpi.str.strip())
+    st.dataframe(show, hide_index=True, width="stretch", height=420, column_config={
+        "kpi": CC.TextColumn("Measure", width="medium"), "optimised": CC.NumberColumn("RailOpt"),
+        "manual_mean": CC.NumberColumn("Manual (mean)", format="%.1f"),
+        "manual_best_order": CC.NumberColumn("Manual (best)"), "manual_worst_order": CC.NumberColumn("Manual (worst)"),
+        "verdict": CC.TextColumn("Verdict", width="large")})
+    ui.how_to_read(
+        "- **Manual** simulates today's process: each department books its own blocks and never shares them. It is "
+        "run in all 6 orders in which departments could submit, because the order changes who gets the best windows.\n"
+        "- Both plans use the **same data, the same hard safety constraints and the same scoring code**.\n"
+        "- The manual results depend on the assumptions in `baseline.py` (M1-M6), above all that departments never "
+        "share a block.\n- *Task-days past due* is a lateness proxy, not measured asset downtime.")
+
+
+def page_calendar():
+    ui.header("📅 Block calendar", "When and where each block is opened. One bar = one task; bars of different "
+                                   "departments at the same time on the same section share one block.")
+    with st.container(border=True):
+        c1, c2, c3, c4 = st.columns([1, 1.3, 1.4, 2])
+        source = c1.segmented_control("Plan", ["RailOpt", "Manual"], default="RailOpt", key="cal_source",
+                                      help=f"Manual shows the best of the 6 simulated orders ({best}).") or "RailOpt"
+        week = c2.selectbox("Week", WEEKS + ["All weeks"], format_func=lambda w: w if w == "All weeks" else week_label(w),
+                            key="cal_week")
+        depts = c3.multiselect("Departments", list(DEPT_COLORS), default=list(DEPT_COLORS), key="cal_dept")
+        secs = c4.multiselect("Sections", SECTIONS, default=SECTIONS[:4], key="cal_sec",
+                              placeholder="All sections")
+    secs = secs or SECTIONS
+    if source == "RailOpt":
+        p, b = plan, blocks
+    else:
+        p, b = m.with_week(mplans[best][0]), m.with_week(mplans[best][1])
+    p = p[p.dept.isin(depts) & p.section_id.isin(secs)]
+    if week != "All weeks":
+        p = p[p.week == week]
+    b = b[b.window_id.isin(p.window_id) & b.date.isin(p.date)]
+
+    k = st.columns(4)
+    k[0].metric("Tasks", p.task_id.nunique())
+    k[1].metric("Blocks", len(b))
+    k[2].metric("Joint blocks", int(b.merged.sum()) if "merged" in b and len(b) else 0)
+    k[3].metric("Trains disrupted", int(b.trains_affected.sum()) if len(b) else 0)
+    ui.dept_legend()
+    gantt(p, f"{source} plan · {week if week == 'All weeks' else week_label(week)}")
+    with st.expander(f"📋 Task list ({len(p)} rows)", expanded=False):
+        task_table(p)
+        st.download_button("Download this list (CSV)", p.to_csv(index=False), "block_calendar_selection.csv",
+                           "text/csv", key="cal_dl")
+
+
+def page_monthly():
+    ui.header("🗓️ Weekly & monthly view", "How the month is split into weeks, and how much work each week, "
+                                          "department and section gets.")
+    summ = res["summary"]
+    cols = st.columns(len(summ))
+    for c, r in zip(cols, summ.itertuples()):
+        with c.container(border=True):
+            st.markdown(f"**{week_label(r.week)}**")
+            st.markdown(f"<span style='font-size:1.6rem;color:{ui.PRIMARY};font-weight:700'>{r.scheduled}</span> tasks "
+                        f"in <b>{r.blocks}</b> blocks", unsafe_allow_html=True)
+            st.caption(f"{r.merged_blocks} joint · {r.trains_disrupted} trains · {r.carried_over} carried over")
+
+    a, b = st.columns(2)
+    per = plan.drop_duplicates("task_id").groupby(["week", "dept"]).size().rename("tasks").reset_index()
+    fig = px.bar(per, x="week", y="tasks", color="dept", color_discrete_map=DEPT_COLORS, text_auto=True,
+                 title="Tasks per week, by department")
+    fig.update_layout(xaxis=dict(dtick=1, title="Week"), yaxis_title="Tasks", height=380)
+    a.plotly_chart(tidy(fig), width="stretch")
+    heat = (plan.drop_duplicates("task_id").groupby(["section_id", "week"]).size().unstack(fill_value=0)
+            .reindex(columns=WEEKS, fill_value=0))
+    fig = px.imshow(heat, text_auto=True, color_continuous_scale="Blues", aspect="auto",
+                    labels=dict(x="Week", y="Section", color="Tasks"), title="Tasks by section and week")
+    fig.update_layout(height=380, coloraxis_showscale=False, xaxis=dict(dtick=1))
+    b.plotly_chart(tidy(fig), width="stretch")
+
+    if res["realization"] is not None:
+        ui.section("Did the weekly plans follow the monthly plan?",
+                   "The monthly plan assigns each task to a week; each week is then re-planned in detail.")
+        r = res["realization"].status.map(ui.REALIZATION).fillna(res["realization"].status).value_counts()
+        cols = st.columns(len(r))
+        for c, (label, n) in zip(cols, r.items()):
+            c.metric(label, n, f"{n / r.sum():.0%} of tasks", delta_color="off", delta_arrow="off")
+
+    with st.expander("🔧 Detailed weekly solver results"):
+        st.dataframe(summ.drop(columns=[c for c in ("status",) if c in summ]), hide_index=True, width="stretch",
+                     column_config={"week": "Week", "pool": "Candidates", "backfilled": "Added late",
+                                    "scheduled": "Scheduled", "carried_over": "Carried over", "blocks": "Blocks",
+                                    "solver_objective": "Solver value", "merged_blocks": "Joint blocks",
+                                    "trains_disrupted": "Trains", "net_value": "Net value",
+                                    "rel_gap": CC.NumberColumn("Optimality gap", format="%.3f"),
+                                    "proven_optimal": "Proven optimal", "violations": "Rule violations",
+                                    "wall_time_s": CC.NumberColumn("Solve time (s)", format="%.1f")})
+    if res["capacity"] is not None:
+        with st.expander("📦 Why is window capacity left over?"):
+            cap = res["capacity"]
+            st.markdown(f"Free window time by week: **{', '.join(f'{x:.0f}%' for x in cap.free_pct)}**. The backlog is "
+                        "small and the 14-day earliest-start rule releases work gradually, so later weeks are limited "
+                        "by how much work exists, not by the windows.")
+            st.dataframe(cap, hide_index=True, width="stretch", column_config={
+                "free_pct": CC.ProgressColumn("Free window time", format="%.0f%%", min_value=0, max_value=100),
+                "crew_util_pct": CC.ProgressColumn("Crew utilisation", format="%.0f%%", min_value=0, max_value=100)})
+
+
+def page_whatif():
+    ui.header("⚡ Emergency what-if", "A new urgent defect comes in. Where should it go, and what does it cost "
+                                     "the rest of the plan?")
+    st.info("This quick preview re-optimises a whole week without trying to keep the existing plan stable, so "
+            "unrelated tasks may move. For a realistic, stability-aware response use **Rolling re-plan**.", icon="💡")
+    with st.form("wi_form", border=True):
+        st.markdown("**1 · Describe the defect**")
+        f1, f2, f3 = st.columns(3)
+        dept = f1.selectbox("Department", list(DEPT_COLORS), format_func=lambda d: f"{d} · {ui.DEPT_NAMES[d]}",
+                            key="wi_dept")
+        section = f2.selectbox("Section", SECTIONS, key="wi_section")
+        km_off = f3.slider("Distance into section (km)", 0.0, 30.0, 5.0, 0.5, key="wi_km",
+                           help="Clipped to the section's length.")
+        g1, g2 = st.columns(2)
+        dur = g1.slider("Work duration (minutes)", 30, 150, 90, 10, key="wi_dur")
+        score = g2.slider("Priority score", 0.5, 1.0, 0.95, 0.05, key="wi_score",
+                          help="0.95 is typical for a safety-critical emergency.")
+        st.markdown("**2 · Choose where to try it**")
+        mode = st.radio("Where", ["Compare all weeks"] + [f"Week {w}" for w in WEEKS], horizontal=True,
+                        key="wi_mode", label_visibility="collapsed")
+        go = st.form_submit_button("Preview impact", type="primary", key="wi_btn")
+
+    if go:
+        row = sections[sections.section_id == section].iloc[0]
+        km = min(float(row.km_start) + km_off, float(row.km_end))
+        emg = wi.make_emergency_task(T, dept, section, km, dur, priority_score=score)
+        with st.spinner("Re-optimising..."):
+            if mode == "Compare all weeks":
+                st.session_state.wi_result = ("scan", wi.scan_weeks(T, windows, plan, blocks, emg, weeks=WEEKS))
+            else:
+                st.session_state.wi_result = ("week", wi.impact_in_week(T, windows, plan, blocks,
+                                                                         int(mode.split()[1]), emg))
+    if "wi_result" not in st.session_state:
+        st.caption("Set the defect above and press **Preview impact**.")
+        return
+
+    kind, r = st.session_state.wi_result
+    st.markdown("**3 · Result**")
+    if kind == "scan":
+        ok = r[r.feasible]
+        if ok.empty:
+            st.error("No week can take this task: it is longer than every window, or needs a power block that no "
+                     "window allows.")
+        else:
+            best_nv = ok.sort_values(["net_value_change", "tasks_moved"], ascending=[False, True]).iloc[0]
+            least = ok.sort_values(["cost_to_rest", "tasks_moved"], ascending=[False, True]).iloc[0]
+            st.success(f"**Recommended: week {int(best_nv.week)}** - best overall net value "
+                       f"({int(best_nv.net_value_change):+,}), {int(best_nv.tasks_moved)} other tasks moved.")
+            if int(least.week) != int(best_nv.week):
+                st.info(f"Least disruption to other work: week {int(least.week)} ({int(least.cost_to_rest):,} points). "
+                        "But the defect would wait longer, and waiting lowers its own value.")
+            fig = px.bar(ok.assign(Week=ok.week.map(lambda w: f"Week {int(w)}")), x="Week", y="net_value_change",
+                         text_auto=",.0f", title="Change in plan net value if the defect goes in each week")
+            fig.update_traces(marker_color=[ui.ACCENT if w == best_nv.week else ui.MUTED for w in ok.week])
+            fig.update_layout(yaxis_title="Net value change", xaxis_title=None, height=320)
+            st.plotly_chart(tidy(fig), width="stretch")
+        st.dataframe(r, hide_index=True, width="stretch", column_config={
+            "week": "Week", "feasible": "Possible?", "net_value_change": "Net value change",
+            "cost_to_rest": "Cost to other work", "blocks_added": "Extra blocks", "trains_added": "Extra trains",
+            "tasks_displaced": "Tasks bumped out", "tasks_moved": "Tasks moved", "proven": "Proven optimal"})
+        return
+
+    if not r["feasible"]:
+        st.error(f"Week {r['week']} cannot take this task: {r['reason']}.")
+        return
+    s = r["summary"]
+    k = st.columns(4)
+    k[0].metric("Blocks", s["blocks_after"], f"{s['blocks_added']:+d}", delta_color="inverse")
+    k[1].metric("Trains disrupted", s["trains_after"], f"{s['trains_after'] - s['trains_before']:+d}",
+                delta_color="inverse")
+    k[2].metric("Cost to other work", f"{s['cost_to_rest_of_plan']:,}", help="Net-value points lost by the rest "
+                                                                                "of the week's plan.")
+    k[3].metric("Tasks moved / bumped", f"{s['tasks_moved']} / {s['tasks_displaced']}")
+    e = r["emergency"].assign(start=lambda d: d.start_min.map(ui.hhmm), end=lambda d: d.end_min.map(ui.hhmm))
+    slot = e.iloc[0]
+    st.success(f"**Emergency placed:** {slot.slot.split(' ')[0]} {slot.slot.split(' ')[1]} on {slot.section_id}, "
+               f"{slot.start}-{slot.end}.")
+    if s["tasks_moved"] > 10:
+        st.warning(f"{s['tasks_moved']} other tasks were re-assigned because the whole week was re-optimised. "
+                   "Rolling re-plan keeps most of them in place.")
+    if len(r["displaced"]):
+        st.markdown("**Bumped out of this week**")
+        st.dataframe(r["displaced"], hide_index=True, width="stretch")
+    if len(r["moved"]):
+        with st.expander(f"Moved tasks ({len(r['moved'])})"):
+            st.dataframe(r["moved"], hide_index=True, width="stretch",
+                         column_config={"task_id": "Task", "tier": "Priority", "dept": "Dept", "was": "Was", "now": "Now"})
+    gantt(r["new_plan"], f"Week {r['week']} with the emergency task")
+
+
+def page_rolling():
+    ui.header("🔄 Rolling re-plan", "Defects keep arriving. How much does each strategy disturb a plan that "
+                                   "crews and officials have already agreed?")
+    c = st.columns(3)
+    with c[0]:
+        ui.card("🟦 Stable re-plan (RailOpt)", "Freezes blocks in the next few days, re-optimises the next 14 days and "
+                "charges a price for every task it moves.", ui.PRIMARY)
+    with c[1]:
+        ui.card("🟧 Full re-optimisation", "Re-solves from scratch. Best on paper, but may move many tasks crews were "
+                "already prepared for.", ui.ACCENT)
+    with c[2]:
+        ui.card("⬜ Manual-style patch", "Only squeezes the new task in where it fits; nothing else moves.", ui.MUTED)
+
+    summ_path = ROOT / "outputs" / "rolling_summary.csv"
+    if summ_path.exists():
+        rs = pd.read_csv(summ_path)
+        ui.section("Saved scenario", "5 synthetic events (3 emergencies, 4 routine defects) run by <code>python replan.py</code>.")
+        kc = st.columns(len(rs))
+        for col, row in zip(kc, rs.itertuples()):
+            with col.container(border=True):
+                st.markdown(f"**{ui.STRATEGIES.get(row.strategy, row.strategy)}**")
+                st.markdown(f"<span style='font-size:1.5rem;font-weight:700;color:{ui.PRIMARY}'>{row.total_moved}</span>"
+                            f" tasks moved · <b>{row.broken_commitments}</b> broken commitments",
+                            unsafe_allow_html=True)
+                st.caption(f"Net value {row.net_value:,} · {row.blocks} blocks · {row.trains_disrupted} trains")
+        cols = ["strategy", "total_moved", "total_dropped", "total_blocks_changed", "broken_commitments",
+                "mean_emergency_response_days", "tasks_scheduled", "blocks", "trains_disrupted", "net_value"]
+        st.dataframe(rs[cols].assign(strategy=rs.strategy.map(ui.STRATEGIES).fillna(rs.strategy)), hide_index=True,
+                     width="stretch", column_config={
+                         "strategy": "Strategy", "total_moved": "Tasks moved", "total_dropped": "Tasks dropped",
+                         "total_blocks_changed": "Blocks changed", "broken_commitments": "Broken commitments",
+                         "mean_emergency_response_days": CC.NumberColumn("Emergency response (days)", format="%.2f"),
+                         "tasks_scheduled": "Tasks scheduled", "blocks": "Blocks", "trains_disrupted": "Trains",
+                         "net_value": CC.NumberColumn("Net value", format="%d")})
+        ev_path, sens_path = ROOT / "outputs" / "rolling_events.csv", ROOT / "outputs" / "rolling_sensitivity.csv"
+        if ev_path.exists():
+            with st.expander("Results per event"):
+                st.dataframe(pd.read_csv(ev_path), hide_index=True, width="stretch")
+        if sens_path.exists():
+            sens = pd.read_csv(sens_path)
+            mpen = sens[sens.vary == "move_penalty"]
+            with st.expander("📈 How the price per move trades stability for value", expanded=True):
+                a1, a2 = st.columns(2)
+                fig = px.line(mpen, x="value", y="total_moved", markers=True, title="Tasks moved")
+                fig.update_layout(xaxis_title="Price per move", yaxis_title=None, height=300)
+                a1.plotly_chart(tidy(fig), width="stretch")
+                fig = px.line(mpen, x="value", y="net_value", markers=True, title="Net value")
+                fig.update_traces(line_color=ui.ACCENT)
+                fig.update_layout(xaxis_title="Price per move", yaxis_title=None, height=300)
+                a2.plotly_chart(tidy(fig), width="stretch")
+    else:
+        st.info("Run `python Block_planner/replan.py` to produce the saved scenario.")
+
+    ui.section("Try your own event", "Adds one defect to the saved plan and runs all three strategies on it.")
+    with st.form("rp_form", border=True):
+        r1, r2, r3, r4 = st.columns(4)
+        r_kind = r1.segmented_control("Kind", ["Emergency", "Routine"], default="Emergency", key="rp_kind")
+        r_dept = r2.selectbox("Department", list(DEPT_COLORS), key="rp_dept",
+                              format_func=lambda d: f"{d} · {ui.DEPT_NAMES[d]}")
+        r_sec = r3.selectbox("Section", SECTIONS, key="rp_section")
+        now_day = r4.slider("Arrives on day", 0, 20, 3, key="rp_day", help="Day 0 = first day of the plan.")
+        q1, q2, q3 = st.columns(3)
+        r_dur = q1.slider("Duration (minutes)", 30, 150, 90, 10, key="rp_dur")
+        r_lock = q2.slider("Lock days", 0, 4, rp.LOCK_DAYS, key="rp_lock", help=ui.GLOSSARY["Lock days"])
+        r_move = q3.slider("Price per move", 0, 300, rp.MOVE_PENALTY, 10, key="rp_move", help=ui.GLOSSARY["Price per move"])
+        go = st.form_submit_button("Compare strategies", type="primary", key="rp_btn")
+
+    if go:
+        r_kind = r_kind or "Emergency"
+        emergency = r_kind == "Emergency"
+        srow = sections[sections.section_id == r_sec].iloc[0]
+        emg = wi.make_emergency_task(
+            T, r_dept, r_sec, float(srow.km_start) + 5.0, r_dur, task_id="EMG-UI" if emergency else "NEW-UI",
+            overdue_days=1 - now_day if emergency else -(now_day + 15),
+            priority_score=0.95 if emergency else 0.45, tier="CRITICAL" if emergency else "MEDIUM",
+            severity=5 if emergency else 3)
+        event = [dict(day=now_day, kind="emergency" if emergency else "routine", tasks=emg)]
+        rows, plans = [], {}
+        with st.spinner("Re-planning with three strategies..."):
+            for strat in ("stable", "full", "patch"):
+                kw = dict(lock_days=r_lock, move_penalty=r_move) if strat == "stable" else {}
+                ev, sm, p, _, _ = rp.simulate(T, windows, plan, event, strat, workers=8, time_limit=15, **kw)
+                e = ev.iloc[0]
+                rows.append(dict(strategy=ui.STRATEGIES[strat], moved=e.moved, dropped=e.dropped,
+                                 blocks_changed=e.blocks_changed, broken_commitments=e.broken_commitments,
+                                 new_blocks=e.blocks_opened, trains_change=e.trains_change,
+                                 emergency_response_days=e.emergency_response_days, net_value=e.net_value,
+                                 valid=(e.violations == 0 and sm["final_violations"] == 0)))
+                plans[strat] = p
+        st.session_state.rp_result = (pd.DataFrame(rows), plans["stable"], now_day)
+
+    if "rp_result" in st.session_state:
+        out, view, day = st.session_state.rp_result
+        st.dataframe(out, hide_index=True, width="stretch", column_config={
+            "strategy": "Strategy", "moved": "Tasks moved", "dropped": "Tasks dropped",
+            "blocks_changed": "Blocks changed", "broken_commitments": "Broken commitments",
+            "new_blocks": "New blocks", "trains_change": "Change in trains", "emergency_response_days":
+            CC.NumberColumn("Response (days)", format="%.1f"), "net_value": CC.NumberColumn("Net value", format="%d"),
+            "valid": CC.CheckboxColumn("All rules met")})
+        st.caption("Broken commitments are counted against a 2-day lock.")
+        v = view[(view.date >= o.START + pd.Timedelta(days=day))
+                 & (view.date < o.START + pd.Timedelta(days=day + rp.LOOKAHEAD_DAYS))]
+        v = v[v.section_id.isin(v.section_id.drop_duplicates().head(6))]
+        gantt(v, f"Stable plan, days {day}-{day + rp.LOOKAHEAD_DAYS - 1} (first 6 sections)")
+
+
+def page_unscheduled():
+    ui.header("🧩 Unscheduled work", "Tasks left out of the plan, why, and what to do about each one.")
+    u = res["unscheduled"].copy()
+    u["Why"] = u.reason.map(ui.reason_label)
+    never = (u.group == "NEVER_PLACEABLE").sum()
+    declined = (u.group == "PLACEABLE_NOT_SCHEDULED").sum()
+    tl = u[u.reason == "TOO_LONG"]
+    k = st.columns(4)
+    k[0].metric("Unscheduled tasks", f"{len(u)} / {len(T)}", f"{len(u) / len(T):.0%} of all tasks", delta_color="off", delta_arrow="off")
+    k[1].metric("Cannot fit any window", never, help="Needs a longer or different window from the control office.")
+    k[2].metric("Could fit, declined", declined, help="Low value now; carried to the next planning cycle.")
+    k[3].metric("Critical / high left out", int(u.tier.isin(["CRITICAL", "HIGH"]).sum()),
+                delta_color="off", delta_arrow="off", help="These deserve a manual review first.")
+
+    if len(tl):
+        short = tl.recommended_action.str.extract(r"\+(\d+)")[0].astype(int)
+        st.warning(f"**Action:** {len(tl)} tasks need an extended block ({short.min()}-{short.max()} min longer than "
+                   "any window). Ask the control office for longer windows on these sections.", icon="📣")
+
+    a, b = st.columns([1.2, 1])
+    with a:
+        g = u.groupby(["Why", "tier"]).size().rename("tasks").reset_index()
+        fig = px.bar(g, y="Why", x="tasks", color="tier", orientation="h", color_discrete_map=ui.TIER_COLORS,
+                     category_orders={"tier": ui.TIER_ORDER}, title="Why tasks were left out", text_auto=True)
+        fig.update_layout(yaxis_title=None, xaxis_title="Tasks", height=300)
+        st.plotly_chart(tidy(fig), width="stretch")
+    with b:
+        st.markdown("**What the reasons mean**")
+        for code in u.reason.unique():
+            name, desc = ui.REASONS.get(code, (code, ""))
+            st.markdown(f"- **{name}** - {desc}")
+
+    ui.section("Task list")
+    f1, f2, f3 = st.columns(3)
+    why = f1.multiselect("Reason", sorted(u.Why.unique()), key="un_reason", placeholder="All reasons")
+    dept = f2.multiselect("Department", sorted(u.dept.unique()), key="un_dept", placeholder="All departments")
+    tier = f3.multiselect("Priority", [t for t in ui.TIER_ORDER if t in set(u.tier)], key="un_tier",
+                          placeholder="All priorities")
+    v = u[u.Why.isin(why or u.Why.unique()) & u.dept.isin(dept or u.dept.unique()) & u.tier.isin(tier or u.tier.unique())]
+    st.dataframe(v[["task_id", "dept", "section_id", "task", "tier", "Why", "due_idx", "recommended_action"]],
+                 hide_index=True, width="stretch", column_config={
+                     "task_id": "Task ID", "dept": "Dept", "section_id": "Section", "task": "Work", "tier": "Priority",
+                     "Why": "Why not scheduled", "due_idx": CC.NumberColumn("Due day", help="Days from plan start; "
+                                                                             "negative = already overdue"),
+                     "recommended_action": CC.TextColumn("Recommended action", width="large")})
+    st.download_button("Download unscheduled tasks (CSV)", v.to_csv(index=False), "unscheduled_tasks.csv", "text/csv",
+                       key="un_dl")
+    if res["audit"] is not None:
+        with st.expander("🔍 Objective audit (consistency check)"):
+            st.caption("The plan's value recomputed independently, compared with what the solver reported.")
+            st.dataframe(res["audit"], hide_index=True, width="stretch")
+
+
+def page_export():
+    ui.header("📤 Export block requests", "Download the recommended blocks as requests for review. The layout is "
+                                          "illustrative until the real BDMS fields are available.")
+    ew = st.segmented_control("Week", ["All"] + WEEKS, default="All", key="ex_week",
+                              format_func=lambda w: "All weeks" if w == "All" else f"Week {w}") or "All"
+    wb, wp = (blocks, plan) if ew == "All" else (blocks[blocks.week == ew], plan[plan.week == ew])
+    req = bx.to_bdms(wp, wb)
+    k = st.columns(4)
+    k[0].metric("Block requests", len(req))
+    k[1].metric("Joint blocks", int(req.departments.str.contains(r"\+").sum()))
+    k[2].metric("Power blocks", int(req.power_block_required.sum()))
+    k[3].metric("Work items", int(req.n_work_items.sum()))
+    st.dataframe(req, hide_index=True, width="stretch", height=420, column_config={
+        "block_id": "Block ID", "section": "Section", "date": "Date", "start": "Start", "end": "End",
+        "duration_min": "Minutes", "departments": "Departments", "crews": "Crews",
+        "power_block_required": CC.CheckboxColumn("Power off"), "n_work_items": "Items",
+        "work_items": CC.TextColumn("Work items", width="large"), "trains_affected": "Trains",
+        "goods_trains_affected": "Goods trains", "remarks": "Remarks", "status": "Status"})
+    with st.container(border=True):
+        st.markdown("**Download**")
+        d1, d2, d3 = st.columns(3)
+        d1.download_button("⬇️ Block requests (CSV)", req.to_csv(index=False), "block_requests.csv", "text/csv",
+                           key="dl_csv", width="stretch", type="primary")
+        d2.download_button("⬇️ Block requests (JSON)", bx.to_json(wp, wb), "block_requests.json", "application/json",
+                           key="dl_json", width="stretch")
+        d3.download_button("⬇️ Work items (CSV)", bx.work_items(wp).to_csv(index=False), "work_items.csv", "text/csv",
+                           key="dl_items", width="stretch")
+    st.warning("Recommendations only - every block request needs review and approval by authorised officials.",
+               icon="⚠️")
+
+
+# ================================================================ navigation + sidebar
+pages = {
+    "Plan": [st.Page(page_overview, title="Overview", icon="🏠", default=True),
+             st.Page(page_calendar, title="Block calendar", icon="📅", url_path="calendar"),
+             st.Page(page_monthly, title="Weekly & monthly view", icon="🗓️", url_path="monthly")],
+    "Scenarios": [st.Page(page_whatif, title="Emergency what-if", icon="⚡", url_path="what-if"),
+                  st.Page(page_rolling, title="Rolling re-plan", icon="🔄", url_path="rolling")],
+    "Review": [st.Page(page_unscheduled, title="Unscheduled work", icon="🧩", url_path="unscheduled"),
+               st.Page(page_export, title="Export requests", icon="📤", url_path="export")],
+}
+nav = st.navigation(pages)
+
+st.logo(str(ROOT / "assets" / "logo.svg"), size="large")
 with st.sidebar:
-    st.title("RailOpt")
-    st.caption("Automatic block planning - synthetic data, recommendations only")
-    st.markdown(f"**Plan:** {plan.week.nunique()} weeks from {o.START:%d %b %Y}  \n"
-                f"**Tasks:** {len(T)} | **COA windows:** {len(windows)}")
-    with st.expander("Re-run the planner (about 1 minute)"):
-        bal = st.number_input("Balance strength (B12)", 0, 50, h.DEFAULT_BALANCE, key="rerun_balance")
-        res_pct = st.slider("Emergency reserve", 0.0, 0.5, h.EMERGENCY_RESERVE, 0.05, key="rerun_reserve")
-        early = st.number_input("Earliest start, days before due (B10)", 0, 60, h.EARLY_DAYS, key="rerun_early")
-        if st.button("Run horizons.py", key="rerun_btn"):
+    st.markdown("**Current plan**")
+    st.markdown(f"**{o.START:%d %b} - {END:%d %b %Y}**  \n{len(T)} tasks · {len(windows)} corridor windows  \n"
+                f"{blocks.shape[0]} blocks planned")
+    with st.expander("📖 Glossary"):
+        for term, text in ui.GLOSSARY.items():
+            st.markdown(f"**{term}** - {text}")
+    with st.expander("⚙️ Re-run the planner (~1 min)"):
+        bal = st.number_input("Balance strength", 0, 50, h.DEFAULT_BALANCE, key="rerun_balance",
+                              help="Penalty for overloading one week. Higher = work spread more evenly across weeks.")
+        res_pct = st.slider("Emergency reserve", 0.0, 0.5, h.EMERGENCY_RESERVE, 0.05, key="rerun_reserve",
+                            help="Share of window time the monthly plan keeps free for emergencies.")
+        early = st.number_input("Earliest start (days before due)", 0, 60, h.EARLY_DAYS, key="rerun_early",
+                                help="Work may start at most this many days before its due date.")
+        if st.button("Run planner", key="rerun_btn", width="stretch"):
             with st.spinner("Planning 4 weeks..."):
                 r = subprocess.run([sys.executable, "horizons.py", "--no-ablation", "--balance", str(bal),
                                     "--reserve", str(res_pct), "--early-days", str(early)],
                                    cwd=ROOT, capture_output=True, text=True, timeout=900)
             st.cache_data.clear()
-            st.success("Done - reload the page.") if r.returncode == 0 else st.error(r.stderr[-800:])
-    st.caption("The what-if and baseline use the default 14-day earliest-start rule.")
-
-tabs = st.tabs(["Overview", "Block calendar", "Monthly plan", "What-if", "Rolling re-plan",
-                "Unscheduled & diagnostics", "Export"])
-
-# ---------------------------------------------------------------- overview
-with tabs[0]:
-    st.subheader("Optimised plan vs simulated manual planning")
-    c = st.columns(5)
-    c[0].metric("Tasks scheduled", f"{ai['tasks_scheduled']} / {ai['placeable_tasks']}",
-                f"{ai['tasks_scheduled'] - mean.tasks_scheduled:+.0f} vs manual mean")
-    c[1].metric("Blocks opened", ai["blocks"], delta(ai["blocks"], mean.blocks), delta_color="inverse")
-    c[2].metric("Trains disrupted", ai["trains_disrupted"], delta(ai["trains_disrupted"], mean.trains_disrupted),
-                delta_color="inverse")
-    c[3].metric("Overdue tasks scheduled", ai["overdue_cleared"], f"start day {ai['overdue_mean_day']} vs {mean.overdue_mean_day:.2f}",
-                delta_color="off")
-    c[4].metric("Net value", f"{ai['net_value']:,}", delta(ai["net_value"], mean.net_value))
-    st.caption("Manual = mean over the 6 orders in which departments could submit requests. "
-               "Same data, same hard constraints, same objective, same KPI code.")
-
-    show = cmp.drop(columns="key").rename(columns={"kpi": "KPI", "optimised": "Optimised", "manual_mean": "Manual (mean)",
-                                                   "manual_best_order": "Manual (best order)",
-                                                   "manual_worst_order": "Manual (worst order)", "verdict": "Verdict"})
-    st.dataframe(show, hide_index=True, width="stretch")
-
-    left, right = st.columns(2)
-    chart = pd.DataFrame({"KPI": ["Blocks", "Trains disrupted / 10", "Task-days past due / 10"] * 2,
-                          "Plan": ["Optimised"] * 3 + ["Manual (mean)"] * 3,
-                          "Value": [ai["blocks"], ai["trains_disrupted"] / 10, ai["days_past_due_total"] / 10,
-                                    mean.blocks, mean.trains_disrupted / 10, mean.days_past_due_total / 10]})
-    left.plotly_chart(px.bar(chart, x="KPI", y="Value", color="Plan", barmode="group",
-                             color_discrete_sequence=["#2a6f97", "#b0b7bf"]), width="stretch")
-    wk = h.workload_profile(plan, blocks, plan.week.max())[0].assign(Plan="Optimised")
-    mp, mb = mplans[best]
-    wm = h.workload_profile(mp, mb, plan.week.max())[0].assign(Plan="Manual (best order)")
-    right.plotly_chart(px.bar(pd.concat([wk, wm]), x="week", y="tasks", color="Plan", barmode="group",
-                              title="Tasks per week", color_discrete_sequence=["#2a6f97", "#b0b7bf"]),
-                       width="stretch")
-    st.info("**Read this carefully.** The manual planner requests every placeable task, so it schedules more tasks "
-            f"({mean.tasks_scheduled:.0f} vs {ai['tasks_scheduled']}); the optimiser declines tasks whose block costs more than "
-            "they are worth. Manual outcomes depend on the assumptions in `baseline.py` (M1-M6), above all that "
-            "departments never share a block. 'Task-days past due' is a proxy, not measured downtime.")
-
-# ---------------------------------------------------------------- calendar
-with tabs[1]:
-    st.subheader("Block calendar")
-    c1, c2, c3, c4 = st.columns(4)
-    source = c1.selectbox("Plan", ["Optimised", f"Manual ({best})"], key="cal_source")
-    weeks = sorted(plan.week.unique())
-    week = c2.selectbox("Week", ["All"] + weeks, index=1, key="cal_week")
-    depts = c3.multiselect("Departments", list(DEPT_COLORS), default=list(DEPT_COLORS), key="cal_dept")
-    secs_all = sorted(T.section_id.unique())
-    secs = c4.multiselect("Sections", secs_all, default=secs_all[:4], key="cal_sec")
-    p = plan if source == "Optimised" else m.with_week(mplans[best][0])
-    p = p[p.dept.isin(depts) & p.section_id.isin(secs)]
-    if week != "All":
-        p = p[p.week == week]
-    gantt(p, f"{source} - {'all weeks' if week == 'All' else f'week {week}'}")
-    st.caption("One bar = one task. Bars of different departments on the same section are the same block: "
-               "crews work in parallel, each after its own setup.")
-    st.dataframe(p[["date", "section_id", "dept", "task_id", "task", "tier", "km", "start_min", "end_min"]]
-                 .assign(date=lambda d: d.date.dt.strftime("%a %d-%b"),
-                         start_min=lambda d: d.start_min.map(lambda x: f"{x // 60:02d}:{x % 60:02d}"),
-                         end_min=lambda d: d.end_min.map(lambda x: f"{x // 60:02d}:{x % 60:02d}"))
-                 .rename(columns={"start_min": "start", "end_min": "end"}), hide_index=True, width="stretch")
-
-# ---------------------------------------------------------------- monthly
-with tabs[2]:
-    st.subheader("Weekly and monthly view")
-    summ = res["summary"]
-    st.dataframe(summ.drop(columns=[c for c in ("status",) if c in summ]), hide_index=True, width="stretch")
-    a, b = st.columns(2)
-    per = plan.drop_duplicates("task_id").groupby(["week", "dept"]).size().rename("tasks").reset_index()
-    a.plotly_chart(px.bar(per, x="week", y="tasks", color="dept", color_discrete_map=DEPT_COLORS,
-                          title="Tasks scheduled per week and department"), width="stretch")
-    heat = plan.drop_duplicates("task_id").groupby(["section_id", "week"]).size().rename("tasks").reset_index()
-    b.plotly_chart(px.density_heatmap(heat, x="week", y="section_id", z="tasks", histfunc="sum",
-                                      color_continuous_scale="Blues", title="Tasks by section and week"),
-                   width="stretch")
-    if res["realization"] is not None:
-        r = res["realization"]
-        st.markdown("**Monthly plan vs what the weekly plans did** (relative to the initial monthly assignment)")
-        st.dataframe(r.status.value_counts().rename("tasks").reset_index(), hide_index=True)
-    if res["capacity"] is not None:
-        st.markdown("**Why capacity is left over** (eligible = at least one compatible window that week)")
-        st.dataframe(res["capacity"], hide_index=True, width="stretch")
-        cap = res["capacity"]
-        st.caption(f"Free window time by week: {', '.join(f'{x:.0f}%' for x in cap.free_pct)}. "
-                   "The backlog is small and released gradually by the 14-day start rule, so later weeks are "
-                   "demand-limited, not constraint-limited.")
-
-# ---------------------------------------------------------------- what-if
-with tabs[3]:
-    st.subheader("What-if: emergency defect")
-    st.caption("Re-optimises the chosen week with the emergency task forced in and compares it with the current plan. "
-               "This preview has NO stability objective, so unrelated tasks may move - the 'Rolling re-plan' tab "
-               "keeps committed blocks and prices changes.")
-    f1, f2, f3 = st.columns(3)
-    dept = f1.selectbox("Department", list(DEPT_COLORS), key="wi_dept")
-    section = f2.selectbox("Section", sorted(T.section_id.unique()), key="wi_section")
-    row = sections[sections.section_id == section].iloc[0]
-    km = f3.slider("Location (km)", float(row.km_start), float(row.km_end), float(row.km_start) + 5.0, 0.5, key="wi_km")
-    g1, g2, g3 = st.columns(3)
-    dur = g1.slider("Work duration (min)", 30, 150, 90, 10, key="wi_dur")
-    score = g2.slider("Priority score", 0.5, 1.0, 0.95, 0.05, key="wi_score")
-    mode = g3.selectbox("Where", ["Scan all weeks", "Week 1", "Week 2", "Week 3", "Week 4"], key="wi_mode")
-    if st.button("Preview impact", key="wi_btn"):
-        emg = wi.make_emergency_task(T, dept, section, km, dur, priority_score=score)
-        with st.spinner("Re-optimising..."):
-            if mode == "Scan all weeks":
-                scan = wi.scan_weeks(T, windows, plan, blocks, emg, weeks=sorted(plan.week.unique()))
-                st.markdown("**The same defect in each week**")
-                st.dataframe(scan, hide_index=True, width="stretch")
-                ok = scan[scan.feasible]
-                if ok.empty:
-                    st.error("No week can take this task (too long for every window, or no power-capable window).")
-                else:
-                    best_nv = ok.sort_values(["net_value_change", "tasks_moved"], ascending=[False, True]).iloc[0]
-                    least = ok.sort_values(["cost_to_rest", "tasks_moved"], ascending=[False, True]).iloc[0]
-                    st.success(f"Highest overall net value: week {int(best_nv.week)} "
-                               f"({int(best_nv.net_value_change):+d}, {int(best_nv.tasks_moved)} other tasks moved).")
-                    if int(least.week) != int(best_nv.week):
-                        st.info(f"Least cost to the rest of the plan: week {int(least.week)} "
-                                f"({int(least.cost_to_rest)} points) - but the defect would wait longer, and "
-                                "waiting lowers its own value (delay penalty).")
+            if r.returncode == 0:
+                st.rerun()
             else:
-                r = wi.impact_in_week(T, windows, plan, blocks, int(mode.split()[1]), emg)
-                if not r["feasible"]:
-                    st.error(r["reason"])
-                else:
-                    s = r["summary"]
-                    k = st.columns(4)
-                    k[0].metric("Blocks", s["blocks_after"], f"{s['blocks_added']:+d}", delta_color="inverse")
-                    k[1].metric("Trains disrupted", s["trains_after"], f"{s['trains_after'] - s['trains_before']:+d}",
-                                delta_color="inverse")
-                    k[2].metric("Cost to the rest of the plan", s["cost_to_rest_of_plan"])
-                    k[3].metric("Tasks moved / displaced", f"{s['tasks_moved']} / {s['tasks_displaced']}")
-                    st.markdown("**Emergency task placement**")
-                    st.dataframe(r["emergency"], hide_index=True)
-                    if s["tasks_moved"] > 10:
-                        st.warning(f"{s['tasks_moved']} other tasks were re-assigned to other blocks - the week was fully "
-                                   "re-optimised. A planner would want fewer changes (Step 6).")
-                    if len(r["displaced"]):
-                        st.markdown("**Displaced (no longer scheduled this week)**")
-                        st.dataframe(r["displaced"], hide_index=True)
-                    if len(r["moved"]):
-                        with st.expander(f"Moved tasks ({len(r['moved'])})"):
-                            st.dataframe(r["moved"], hide_index=True)
-                    gantt(r["new_plan"], f"Week {r['week']} after the emergency task")
+                st.error(r.stderr[-800:])
+        st.caption("What-if and the manual baseline always use the default 14-day rule.")
 
-# ---------------------------------------------------------------- rolling re-plan
-with tabs[4]:
-    st.subheader("Rolling re-planning: new defects and emergencies")
-    st.caption("At the start of the arrival day, blocks of earlier days are executed, blocks inside the lock window are "
-               "frozen, the next 14 days are re-optimised with a price on every change, and later blocks are left alone. "
-               "Three strategies on the same events: stable (this system), full re-optimisation, and a manual-style patch.")
-    summ_path = ROOT / "outputs" / "rolling_summary.csv"
-    if summ_path.exists():
-        rs = pd.read_csv(summ_path)
-        st.markdown("**Scenario run by `python replan.py`** (5 events: 3 emergencies, 4 routine defects, synthetic)")
-        cols = ["strategy", "total_moved", "total_dropped", "total_blocks_changed", "broken_commitments",
-                "mean_emergency_response_days", "tasks_scheduled", "blocks", "trains_disrupted", "net_value"]
-        st.dataframe(rs[cols], hide_index=True, width="stretch")
-        ev_path = ROOT / "outputs" / "rolling_events.csv"
-        if ev_path.exists():
-            with st.expander("Per event"):
-                st.dataframe(pd.read_csv(ev_path), hide_index=True, width="stretch")
-        sens_path = ROOT / "outputs" / "rolling_sensitivity.csv"
-        if sens_path.exists():
-            sens = pd.read_csv(sens_path)
-            mp = sens[sens.vary == "move_penalty"]
-            a1, a2 = st.columns(2)
-            a1.plotly_chart(px.line(mp, x="value", y="total_moved", markers=True,
-                                    title="Tasks moved vs price per move", labels={"value": "move penalty"}),
-                            width="stretch")
-            a2.plotly_chart(px.line(mp, x="value", y="net_value", markers=True,
-                                    title="Net value vs price per move", labels={"value": "move penalty"}),
-                            width="stretch")
-    else:
-        st.info("Run `python replan.py` to produce the scenario results.")
-
-    st.markdown("---")
-    st.markdown("**Try one event on the saved plan**")
-    r1, r2, r3 = st.columns(3)
-    now_day = r1.slider("Arrival day (0 = first day)", 0, 20, 3, key="rp_day")
-    r_dept = r2.selectbox("Department", list(DEPT_COLORS), key="rp_dept")
-    r_sec = r3.selectbox("Section", sorted(T.section_id.unique()), key="rp_section")
-    q1, q2, q3, q4 = st.columns(4)
-    r_dur = q1.slider("Duration (min)", 30, 150, 90, 10, key="rp_dur")
-    r_lock = q2.slider("Lock days", 0, 4, rp.LOCK_DAYS, key="rp_lock")
-    r_move = q3.slider("Price per move", 0, 300, rp.MOVE_PENALTY, 10, key="rp_move")
-    r_kind = q4.selectbox("Kind", ["Emergency", "Routine"], key="rp_kind")
-    if st.button("Compare strategies", key="rp_btn"):
-        srow = sections[sections.section_id == r_sec].iloc[0]
-        emg = wi.make_emergency_task(
-            T, r_dept, r_sec, float(srow.km_start) + 5.0, r_dur, task_id="EMG-UI" if r_kind == "Emergency" else "NEW-UI",
-            overdue_days=1 - now_day if r_kind == "Emergency" else -(now_day + 15),
-            priority_score=0.95 if r_kind == "Emergency" else 0.45, tier="CRITICAL" if r_kind == "Emergency" else "MEDIUM",
-            severity=5 if r_kind == "Emergency" else 3)
-        event = [dict(day=now_day, kind="emergency" if r_kind == "Emergency" else "routine", tasks=emg)]
-        out_rows, plans = [], {}
-        with st.spinner("Re-planning with three strategies..."):
-            for strat in ("stable", "full", "patch"):
-                kw = dict(lock_days=r_lock, move_penalty=r_move) if strat == "stable" else {}
-                ev, sm, p, b, _ = rp.simulate(T, windows, plan, event, strat, workers=8, time_limit=15, **kw)
-                e = ev.iloc[0]
-                out_rows.append(dict(strategy=strat, moved=e.moved, dropped=e.dropped, blocks_changed=e.blocks_changed,
-                                     broken_commitments=e.broken_commitments, new_blocks=e.blocks_opened,
-                                     trains_change=e.trains_change, emergency_response_days=e.emergency_response_days,
-                                     net_value=e.net_value, valid=(e.violations == 0 and sm["final_violations"] == 0)))
-                plans[strat] = p
-        st.dataframe(pd.DataFrame(out_rows), hide_index=True, width="stretch")
-        st.caption("broken_commitments is counted against a 2-day lock. 'stable' keeps committed blocks and prices every "
-                   "move; 'full' may move anything; 'patch' only adds the new task.")
-        view = plans["stable"]
-        view = view[(view.date >= o.START + pd.Timedelta(days=now_day))
-                    & (view.date < o.START + pd.Timedelta(days=now_day + rp.LOOKAHEAD_DAYS))]
-        gantt(view, f"Stable plan, days {now_day}-{now_day + rp.LOOKAHEAD_DAYS - 1}")
-
-# ---------------------------------------------------------------- unscheduled
-with tabs[5]:
-    st.subheader("Tasks not scheduled after the final week")
-    u = res["unscheduled"]
-    st.write(f"**{len(u)} of {len(T)} tasks** are unscheduled: "
-             f"{(u.group == 'NEVER_PLACEABLE').sum()} can never be placed with the current windows, "
-             f"{(u.group == 'PLACEABLE_NOT_SCHEDULED').sum()} could be placed but the objective declines them.")
-    st.dataframe(u.groupby(["group", "reason", "tier"]).size().rename("tasks").reset_index(), hide_index=True)
-    f = st.selectbox("Filter", ["All"] + sorted(u.reason.unique()), key="un_filter")
-    st.dataframe(u if f == "All" else u[u.reason == f], hide_index=True, width="stretch")
-    tl = u[u.reason == "TOO_LONG"]
-    if len(tl):
-        short = tl.recommended_action.str.extract(r"\+(\d+)")[0].astype(int)
-        st.warning(f"{len(tl)} tasks need an extended block (shortfall {short.min()}-{short.max()} min). "
-                   "Ask the control office for longer windows.")
-    if res["audit"] is not None:
-        st.markdown("**Objective audit** - recomputed value vs the value the solver reported")
-        st.dataframe(res["audit"], hide_index=True)
-
-# ---------------------------------------------------------------- export
-with tabs[6]:
-    st.subheader("BDMS-style export")
-    st.caption("Illustrative layout - the real BDMS fields are not available. Recommendations only: every request "
-               "needs official approval.")
-    req = bx.to_bdms(plan, blocks)
-    ew = st.selectbox("Week", ["All"] + sorted(plan.week.unique()), key="ex_week")
-    if ew != "All":
-        wb, wp = blocks[blocks.week == ew], plan[plan.week == ew]
-        req = bx.to_bdms(wp, wb)
-    else:
-        wb, wp = blocks, plan
-    st.dataframe(req, hide_index=True, width="stretch")
-    d1, d2, d3 = st.columns(3)
-    d1.download_button("Block requests (CSV)", req.to_csv(index=False), "block_requests.csv", "text/csv", key="dl_csv")
-    d2.download_button("Block requests (JSON)", bx.to_json(wp, wb), "block_requests.json", "application/json", key="dl_json")
-    d3.download_button("Work items (CSV)", bx.work_items(wp).to_csv(index=False), "work_items.csv", "text/csv", key="dl_items")
+nav.run()
+ui.footer()
