@@ -269,8 +269,10 @@ class TestDashboardSmoke(unittest.TestCase):
         at = AppTest.from_file(str(m.ROOT / "app.py"), default_timeout=240)
         at.run()
         self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
-        labels = [x.label for x in at.metric]
-        self.assertIn("Blocks opened", labels)
+        self.assertTrue(any("5-minute demo tour" in x.value for x in at.markdown))       # Start here page
+        goto("overview")
+        self.assertEqual(len(at.exception), 0, [e.value for e in at.exception])
+        self.assertTrue(any("Blocks opened" in x.value for x in at.markdown))
         for page in ("calendar", "monthly", "unscheduled", "export"):
             goto(page)
             self.assertEqual(len(at.exception), 0, (page, [e.value for e in at.exception]))

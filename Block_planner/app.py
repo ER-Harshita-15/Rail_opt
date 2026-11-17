@@ -101,6 +101,12 @@ def gantt(p, title, height_per_lane=24):
     fig.update_traces(hovertemplate="<b>%{customdata[1]}</b><br>%{customdata[0]} · %{customdata[5]}<br>"
                                     "Tier: %{customdata[2]} · km %{customdata[3]}<br>%{x|%a %d %b}, "
                                     "%{customdata[4]}<extra></extra>", marker_line_width=0)
+    lanes = list(d.Section.drop_duplicates())
+    for k, sec in enumerate(d.section_id.drop_duplicates()):          # light band behind every other section
+        if k % 2 == 0:
+            idx = [i for i, lane in enumerate(lanes) if lane.startswith(sec + "  ")]
+            fig.add_shape(type="rect", xref="paper", x0=0, x1=1, y0=min(idx) - 0.5, y1=max(idx) + 0.5,
+                          fillcolor="#EEF3F8", line_width=0, layer="below")
     fig.update_yaxes(autorange=True, title=None)
     fig.update_xaxes(title=None, tickformat="%a %d %b", showgrid=True)
     fig.update_layout(height=max(360, height_per_lane * d.Section.nunique() + 140), showlegend=False)
@@ -123,83 +129,101 @@ def week_label(w):
 
 
 # ================================================================ pages
+def page_start():
+    ui.hero("RailOpt: one coordinated plan for railway maintenance blocks",
+            "Today Engineering, Signal & Telecom and Traction each book their own track closures. RailOpt plans them "
+            "together, so the same work needs fewer closures and stops fewer trains.")
+    fewer_b = -pct(ai["blocks"], mean.blocks)
+    fewer_t = -pct(ai["trains_disrupted"], mean.trains_disrupted)
+    ui.section("The story in 30 seconds")
+    ui.steps([("The problem", "Three departments plan separately, so the line is closed again and again for work "
+                              "that could share one closure."),
+              ("What RailOpt does", "Collects all maintenance tasks, ranks them by urgency and risk, and fits them into "
+                                    "the corridor windows the control office allows."),
+              ("The result", f"{fewer_b:.0f}% fewer blocks and {fewer_t:.0f}% fewer trains disrupted than manual "
+                             "planning, with all overdue work still scheduled.")])
+
+    ui.section("5-minute demo tour", "Open each page in order. The line in quotes is what you can say while showing it.")
+    tour = [
+        ("Overview", "overview", "Point at the two columns, manual vs RailOpt.",
+         f"Same work, same safety rules. RailOpt needs {ai['blocks']} closures instead of about {mean.blocks:.0f}."),
+        ("Block calendar", "calendar", "Pick one week, then switch Plan from RailOpt to Manual.",
+         "Each bar is a job. Where colours line up, departments share one closure instead of booking three."),
+        ("Weekly & monthly view", "monthly", "Show the four week cards.",
+         "There is a monthly plan and a detailed weekly plan. Overdue work goes first, in week 1."),
+        ("Emergency what-if", "what-if", "Press Preview impact with the default defect.",
+         "An urgent defect comes in. The planner shows which week to put it in and what it costs the rest."),
+        ("Unscheduled work", "unscheduled", "Show the orange action box.",
+         "Nothing is dropped silently. Some jobs are longer than any window, so the control office needs to "
+         "give longer blocks."),
+    ]
+    for i, (title, path, show, say) in enumerate(tour, 1):
+        a, b = st.columns([5, 1], vertical_alignment="center")
+        with a:
+            ui.tour_step(i, title, show, say)
+        b.page_link(PAGES[path], label="Open", icon="➡️")
+
+    ui.section("Tips for presenting")
+    st.markdown("- **Explain mode** (sidebar) adds a short *what you see / what to look at / why it matters* box to "
+                "every page. Keep it on for a first look; switch it off for a cleaner screen.\n"
+                "- Hover over any **ⓘ** icon or chart bar for details. The sidebar **Glossary** explains terms such as "
+                "*block*, *corridor window* and *net value*.\n"
+                "- If someone asks *is this real data?*: no. It is synthetic data shaped like Indian Railways systems "
+                "(TMS, SMMS, TDMS, COA). The method works the same with real exports.")
+
+
 def page_overview():
-    ui.hero("Maintenance block plan at a glance",
-            f"{len(WEEKS)}-week plan, {o.START:%d %b} - {END:%d %b %Y}, for {len(T)} maintenance tasks across "
-            f"{len(SECTIONS)} sections and three departments, compared with simulated manual planning.")
-    ui.steps([("Collect work", "Defects and overdue tasks from TMS, SMMS and TDMS"),
-              ("Prioritise", "Score criticality, urgency, failure risk and traffic impact"),
-              ("Optimise", "Fit tasks into corridor windows and share blocks across departments"),
-              ("Review & export", "Officials check the plan and send block requests")])
+    ui.header("🏠 Overview", f"{len(WEEKS)} weeks, {o.START:%d %b} - {END:%d %b %Y}: {len(T)} maintenance tasks on "
+                            f"{len(SECTIONS)} sections, planned by RailOpt and by simulated manual planning.")
+    ui.explain("overview")
 
-    ui.section("Headline results", "RailOpt's optimised plan compared with the average of 6 simulated manual plans.")
-    c = st.columns(5)
-    c[0].metric("Blocks opened", ai["blocks"], delta(ai["blocks"], mean.blocks), delta_color="inverse",
-                help="Fewer blocks = fewer track closures. Joint blocks let several departments work at once.")
-    c[1].metric("Trains disrupted", ai["trains_disrupted"], delta(ai["trains_disrupted"], mean.trains_disrupted),
-                delta_color="inverse", help="Trains passing through a section while it is blocked, summed over blocks.")
-    c[2].metric("Joint blocks", ai["merged_blocks"], f"{ai['merged_blocks'] / max(ai['blocks'], 1):.0%} of all blocks",
-                delta_color="off", delta_arrow="off", help="Blocks shared by two or more departments. Manual planning has none.")
-    c[3].metric("Overdue tasks scheduled", ai["overdue_cleared"],
-                f"start day {ai['overdue_mean_day']} vs {mean.overdue_mean_day:.1f}", delta_color="off", delta_arrow="off",
-                help="All overdue work is scheduled. Lower start day = cleared sooner.")
-    c[4].metric("Tasks scheduled", f"{ai['tasks_scheduled']} / {ai['placeable_tasks']}",
-                f"{ai['tasks_scheduled'] - mean.tasks_scheduled:+.0f} vs manual",
-                help="Tasks that fit at least one window. RailOpt skips some low-value tasks on purpose - see below.")
+    def d(a, b, lower_better=True, fmt="{:+.0f}%"):
+        p = pct(a, b)
+        return fmt.format(p), (p < 0) == lower_better
 
-    fewer_b = mean.blocks - ai["blocks"]
-    fewer_t = mean.trains_disrupted - ai["trains_disrupted"]
+    rows = []
+    for label, a, b, lb in [("Blocks opened (track closures)", mean.blocks, ai["blocks"], True),
+                            ("Trains disrupted", mean.trains_disrupted, ai["trains_disrupted"], True)]:
+        txt, good = d(b, a, lb)
+        rows.append((label, f"{a:,.0f}", f"{b:,}", txt, good))
+    rows.append(("Shared blocks (2+ departments)", "0", str(ai["merged_blocks"]),
+                 f"{ai['merged_blocks'] / max(ai['blocks'], 1):.0%} of blocks", True))
+    rows.append(("Overdue tasks scheduled", ai["overdue_cleared"], ai["overdue_cleared"], "all of them", True))
+    rows.append(("Tasks scheduled", f"{mean.tasks_scheduled:.0f}", str(ai["tasks_scheduled"]),
+                 f"{ai['tasks_scheduled'] - mean.tasks_scheduled:+.0f}, on purpose", False))
+    ui.versus("Manual planning today (simulated)", "RailOpt", rows)
+
     ui.takeaways([
-        f"Opens <b>{fewer_b:.0f} fewer blocks</b> ({-pct(ai['blocks'], mean.blocks):.0f}% less) by letting departments "
-        f"share {ai['merged_blocks']} blocks.",
-        f"Disrupts <b>{fewer_t:.0f} fewer trains</b> ({-pct(ai['trains_disrupted'], mean.trains_disrupted):.0f}% less) "
-        "by choosing low-traffic windows.",
-        f"Clears overdue work sooner: mean start day <b>{ai['overdue_mean_day']}</b> vs {mean.overdue_mean_day:.1f} "
-        "for manual planning.",
-        f"Trade-off: schedules <b>{mean.tasks_scheduled - ai['tasks_scheduled']:.0f} fewer tasks</b>. These are "
-        "low-priority jobs whose block would cost more than the work is worth now; they move to the next cycle.",
-    ])
+        f"<b>Fewer closures:</b> departments share {ai['merged_blocks']} blocks, so the line closes "
+        f"{mean.blocks - ai['blocks']:.0f} fewer times.",
+        f"<b>Fewer trains stopped:</b> work is put in quieter windows, {mean.trains_disrupted - ai['trains_disrupted']:.0f} "
+        "fewer train disruptions.",
+        f"<b>The trade-off:</b> {mean.tasks_scheduled - ai['tasks_scheduled']:.0f} low-priority jobs wait for next month, "
+        "because a closure just for them costs more than the work is worth now.",
+    ], title="What this means")
 
-    left, right = st.columns(2)
-    with left:
-        chart = pd.DataFrame({
-            "KPI": ["Blocks opened", "Trains disrupted ÷10", "Task-days past due ÷10"] * 2,
-            "Plan": ["RailOpt"] * 3 + ["Manual (mean)"] * 3,
-            "Value": [ai["blocks"], ai["trains_disrupted"] / 10, ai["days_past_due_total"] / 10,
-                      mean.blocks, mean.trains_disrupted / 10, mean.days_past_due_total / 10]})
-        fig = px.bar(chart, x="KPI", y="Value", color="Plan", barmode="group", text_auto=".0f",
-                     title="Lower is better", color_discrete_sequence=ui.PLAN_COLORS)
-        fig.update_layout(xaxis_title=None, yaxis_title=None, height=360)
-        st.plotly_chart(tidy(fig), width="stretch")
-    with right:
-        wk = h.workload_profile(plan, blocks, plan.week.max())[0].assign(Plan="RailOpt")
-        mp, mb = mplans[best]
-        wm = h.workload_profile(mp, mb, plan.week.max())[0].assign(Plan="Manual (best order)")
-        fig = px.bar(pd.concat([wk, wm]), x="week", y="tasks", color="Plan", barmode="group", text_auto=True,
-                     title="Tasks per week", color_discrete_sequence=ui.PLAN_COLORS)
-        fig.update_layout(xaxis_title="Week", yaxis_title="Tasks", height=360, xaxis=dict(dtick=1))
-        st.plotly_chart(tidy(fig), width="stretch")
-
-    ui.section("Full comparison", "Each row is one measure. The verdict compares RailOpt with all 6 manual orders, "
-                                  "not just the average.")
-    show = cmp.drop(columns="key").assign(verdict=lambda d: d.verdict.map(ui.VERDICTS).fillna(d.verdict),
-                                          kpi=lambda d: d.kpi.str.strip())
-    st.dataframe(show, hide_index=True, width="stretch", height=420, column_config={
-        "kpi": CC.TextColumn("Measure", width="medium"), "optimised": CC.NumberColumn("RailOpt"),
-        "manual_mean": CC.NumberColumn("Manual (mean)", format="%.1f"),
-        "manual_best_order": CC.NumberColumn("Manual (best)"), "manual_worst_order": CC.NumberColumn("Manual (worst)"),
-        "verdict": CC.TextColumn("Verdict", width="large")})
-    ui.how_to_read(
-        "- **Manual** simulates today's process: each department books its own blocks and never shares them. It is "
-        "run in all 6 orders in which departments could submit, because the order changes who gets the best windows.\n"
-        "- Both plans use the **same data, the same hard safety constraints and the same scoring code**.\n"
-        "- The manual results depend on the assumptions in `baseline.py` (M1-M6), above all that departments never "
-        "share a block.\n- *Task-days past due* is a lateness proxy, not measured asset downtime.")
+    with st.expander("📊 All 15 measures, and how the comparison works"):
+        show = cmp.drop(columns="key").assign(verdict=lambda d: d.verdict.map(ui.VERDICTS).fillna(d.verdict),
+                                              kpi=lambda d: d.kpi.str.strip())
+        st.dataframe(show, hide_index=True, width="stretch", height=420, column_config={
+            "kpi": CC.TextColumn("Measure", width="medium"), "optimised": CC.NumberColumn("RailOpt"),
+            "manual_mean": CC.NumberColumn("Manual (mean)", format="%.1f"),
+            "manual_best_order": CC.NumberColumn("Manual (best)"),
+            "manual_worst_order": CC.NumberColumn("Manual (worst)"),
+            "verdict": CC.TextColumn("Verdict", width="large")})
+        st.markdown(
+            "- **Manual** simulates today's process: each department books its own blocks and never shares them. It "
+            "is run in all 6 orders departments could submit in, because the order changes who gets the best windows. "
+            "The left column above is the average of the 6.\n"
+            "- Both plans use the **same data, the same hard safety rules and the same scoring code**.\n"
+            "- The manual results depend on the assumptions in `baseline.py` (M1-M6), above all that departments never "
+            "share a block.\n- *Task-days past due* is a lateness proxy, not measured asset downtime.")
 
 
 def page_calendar():
     ui.header("📅 Block calendar", "When and where each block is opened. One bar = one task; bars of different "
                                    "departments at the same time on the same section share one block.")
+    ui.explain("calendar")
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns([1, 1.3, 1.4, 2])
         source = c1.segmented_control("Plan", ["RailOpt", "Manual"], default="RailOpt", key="cal_source",
@@ -207,7 +231,7 @@ def page_calendar():
         week = c2.selectbox("Week", WEEKS + ["All weeks"], format_func=lambda w: w if w == "All weeks" else week_label(w),
                             key="cal_week")
         depts = c3.multiselect("Departments", list(DEPT_COLORS), default=list(DEPT_COLORS), key="cal_dept")
-        secs = c4.multiselect("Sections", SECTIONS, default=SECTIONS[:4], key="cal_sec",
+        secs = c4.multiselect("Sections", SECTIONS, default=SECTIONS[:3], key="cal_sec",
                               placeholder="All sections")
     secs = secs or SECTIONS
     if source == "RailOpt":
@@ -235,6 +259,7 @@ def page_calendar():
 def page_monthly():
     ui.header("🗓️ Weekly & monthly view", "How the month is split into weeks, and how much work each week, "
                                           "department and section gets.")
+    ui.explain("monthly")
     summ = res["summary"]
     cols = st.columns(len(summ))
     for c, r in zip(cols, summ.itertuples()):
@@ -288,8 +313,9 @@ def page_monthly():
 def page_whatif():
     ui.header("⚡ Emergency what-if", "A new urgent defect comes in. Where should it go, and what does it cost "
                                      "the rest of the plan?")
-    st.info("This quick preview re-optimises a whole week without trying to keep the existing plan stable, so "
-            "unrelated tasks may move. For a realistic, stability-aware response use **Rolling re-plan**.", icon="💡")
+    ui.explain("whatif")
+    st.caption("Quick preview: the chosen week is re-planned from scratch, so unrelated tasks may move. "
+               "The Rolling re-plan page shows the stability-aware response.")
     with st.form("wi_form", border=True):
         st.markdown("**1 · Describe the defect**")
         f1, f2, f3 = st.columns(3)
@@ -378,45 +404,48 @@ def page_whatif():
 def page_rolling():
     ui.header("🔄 Rolling re-plan", "Defects keep arriving. How much does each strategy disturb a plan that "
                                    "crews and officials have already agreed?")
-    c = st.columns(3)
-    with c[0]:
-        ui.card("🟦 Stable re-plan (RailOpt)", "Freezes blocks in the next few days, re-optimises the next 14 days and "
-                "charges a price for every task it moves.", ui.PRIMARY)
-    with c[1]:
-        ui.card("🟧 Full re-optimisation", "Re-solves from scratch. Best on paper, but may move many tasks crews were "
-                "already prepared for.", ui.ACCENT)
-    with c[2]:
-        ui.card("⬜ Manual-style patch", "Only squeezes the new task in where it fits; nothing else moves.", ui.MUTED)
-
+    ui.explain("rolling")
+    desc = {"stable": ("🟦", ui.PRIMARY, "Freezes the next 2 days, re-plans the next 14 and charges a price for every "
+                                         "task it moves."),
+            "full": ("🟧", ui.ACCENT, "Re-plans everything from scratch. Best score, but moves work crews were already "
+                                      "told about."),
+            "patch": ("⬜", ui.MUTED, "Squeezes the new task in where it fits. Nothing else moves, but it needs extra "
+                                      "blocks.")}
     summ_path = ROOT / "outputs" / "rolling_summary.csv"
     if summ_path.exists():
-        rs = pd.read_csv(summ_path)
-        ui.section("Saved scenario", "5 synthetic events (3 emergencies, 4 routine defects) run by <code>python replan.py</code>.")
-        kc = st.columns(len(rs))
-        for col, row in zip(kc, rs.itertuples()):
-            with col.container(border=True):
-                st.markdown(f"**{ui.STRATEGIES.get(row.strategy, row.strategy)}**")
-                st.markdown(f"<span style='font-size:1.5rem;font-weight:700;color:{ui.PRIMARY}'>{row.total_moved}</span>"
-                            f" tasks moved · <b>{row.broken_commitments}</b> broken commitments",
-                            unsafe_allow_html=True)
-                st.caption(f"Net value {row.net_value:,} · {row.blocks} blocks · {row.trains_disrupted} trains")
-        cols = ["strategy", "total_moved", "total_dropped", "total_blocks_changed", "broken_commitments",
-                "mean_emergency_response_days", "tasks_scheduled", "blocks", "trains_disrupted", "net_value"]
-        st.dataframe(rs[cols].assign(strategy=rs.strategy.map(ui.STRATEGIES).fillna(rs.strategy)), hide_index=True,
-                     width="stretch", column_config={
-                         "strategy": "Strategy", "total_moved": "Tasks moved", "total_dropped": "Tasks dropped",
-                         "total_blocks_changed": "Blocks changed", "broken_commitments": "Broken commitments",
-                         "mean_emergency_response_days": CC.NumberColumn("Emergency response (days)", format="%.2f"),
-                         "tasks_scheduled": "Tasks scheduled", "blocks": "Blocks", "trains_disrupted": "Trains",
-                         "net_value": CC.NumberColumn("Net value", format="%d")})
+        rs = pd.read_csv(summ_path).set_index("strategy")
+        ui.section("Three ways to respond", "Results on a saved test: 5 synthetic events (3 emergencies, 4 routine "
+                                            "defects) over the 4 weeks.")
+        c = st.columns(3)
+        for col, key in zip(c, ("stable", "full", "patch")):
+            icon, color, text = desc[key]
+            r = rs.loc[key, ["total_moved", "broken_commitments", "blocks", "trains_disrupted", "net_value"]].astype(int)
+            col.markdown(
+                f'<div class="ro-card" style="border-top:4px solid {color}"><h4>{icon} {ui.STRATEGIES[key]}</h4>'
+                f'<p>{text}</p><p style="margin-top:10px"><span style="font-size:1.6rem;font-weight:700;'
+                f'color:{ui.PRIMARY}">{r.total_moved}</span> tasks moved &nbsp;·&nbsp; '
+                f'<b>{r.broken_commitments}</b> promises broken<br><span style="color:#8592A0;font-size:.85rem">'
+                f'{r.blocks} blocks · {r.trains_disrupted} trains · net value {r.net_value:,}</span></p></div>',
+                unsafe_allow_html=True)
+        rs = rs.reset_index()
+        with st.expander("📋 Full results table"):
+            cols = ["strategy", "total_moved", "total_dropped", "total_blocks_changed", "broken_commitments",
+                    "mean_emergency_response_days", "tasks_scheduled", "blocks", "trains_disrupted", "net_value"]
+            st.dataframe(rs[cols].assign(strategy=rs.strategy.map(ui.STRATEGIES).fillna(rs.strategy)),
+                         hide_index=True, width="stretch", column_config={
+                             "strategy": "Strategy", "total_moved": "Tasks moved", "total_dropped": "Tasks dropped",
+                             "total_blocks_changed": "Blocks changed", "broken_commitments": "Broken commitments",
+                             "mean_emergency_response_days": CC.NumberColumn("Emergency response (days)", format="%.2f"),
+                             "tasks_scheduled": "Tasks scheduled", "blocks": "Blocks", "trains_disrupted": "Trains",
+                             "net_value": CC.NumberColumn("Net value", format="%d")})
         ev_path, sens_path = ROOT / "outputs" / "rolling_events.csv", ROOT / "outputs" / "rolling_sensitivity.csv"
         if ev_path.exists():
-            with st.expander("Results per event"):
+            with st.expander("📋 Results per event"):
                 st.dataframe(pd.read_csv(ev_path), hide_index=True, width="stretch")
         if sens_path.exists():
             sens = pd.read_csv(sens_path)
             mpen = sens[sens.vary == "move_penalty"]
-            with st.expander("📈 How the price per move trades stability for value", expanded=True):
+            with st.expander("📈 How the price per move trades stability for value"):
                 a1, a2 = st.columns(2)
                 fig = px.line(mpen, x="value", y="total_moved", markers=True, title="Tasks moved")
                 fig.update_layout(xaxis_title="Price per move", yaxis_title=None, height=300)
@@ -428,19 +457,19 @@ def page_rolling():
     else:
         st.info("Run `python Block_planner/replan.py` to produce the saved scenario.")
 
-    ui.section("Try your own event", "Adds one defect to the saved plan and runs all three strategies on it.")
-    with st.form("rp_form", border=True):
-        r1, r2, r3, r4 = st.columns(4)
-        r_kind = r1.segmented_control("Kind", ["Emergency", "Routine"], default="Emergency", key="rp_kind")
-        r_dept = r2.selectbox("Department", list(DEPT_COLORS), key="rp_dept",
-                              format_func=lambda d: f"{d} · {ui.DEPT_NAMES[d]}")
-        r_sec = r3.selectbox("Section", SECTIONS, key="rp_section")
-        now_day = r4.slider("Arrives on day", 0, 20, 3, key="rp_day", help="Day 0 = first day of the plan.")
-        q1, q2, q3 = st.columns(3)
-        r_dur = q1.slider("Duration (minutes)", 30, 150, 90, 10, key="rp_dur")
-        r_lock = q2.slider("Lock days", 0, 4, rp.LOCK_DAYS, key="rp_lock", help=ui.GLOSSARY["Lock days"])
-        r_move = q3.slider("Price per move", 0, 300, rp.MOVE_PENALTY, 10, key="rp_move", help=ui.GLOSSARY["Price per move"])
-        go = st.form_submit_button("Compare strategies", type="primary", key="rp_btn")
+    with st.expander("🧪 Try your own event: add one defect and compare the three strategies", expanded="rp_result" in st.session_state):
+        with st.form("rp_form", border=True):
+            r1, r2, r3, r4 = st.columns(4)
+            r_kind = r1.segmented_control("Kind", ["Emergency", "Routine"], default="Emergency", key="rp_kind")
+            r_dept = r2.selectbox("Department", list(DEPT_COLORS), key="rp_dept",
+                                  format_func=lambda d: f"{d} · {ui.DEPT_NAMES[d]}")
+            r_sec = r3.selectbox("Section", SECTIONS, key="rp_section")
+            now_day = r4.slider("Arrives on day", 0, 20, 3, key="rp_day", help="Day 0 = first day of the plan.")
+            q1, q2, q3 = st.columns(3)
+            r_dur = q1.slider("Duration (minutes)", 30, 150, 90, 10, key="rp_dur")
+            r_lock = q2.slider("Lock days", 0, 4, rp.LOCK_DAYS, key="rp_lock", help=ui.GLOSSARY["Lock days"])
+            r_move = q3.slider("Price per move", 0, 300, rp.MOVE_PENALTY, 10, key="rp_move", help=ui.GLOSSARY["Price per move"])
+            go = st.form_submit_button("Compare strategies", type="primary", key="rp_btn")
 
     if go:
         r_kind = r_kind or "Emergency"
@@ -483,6 +512,7 @@ def page_rolling():
 
 def page_unscheduled():
     ui.header("🧩 Unscheduled work", "Tasks left out of the plan, why, and what to do about each one.")
+    ui.explain("unscheduled")
     u = res["unscheduled"].copy()
     u["Why"] = u.reason.map(ui.reason_label)
     never = (u.group == "NEVER_PLACEABLE").sum()
@@ -513,21 +543,21 @@ def page_unscheduled():
             name, desc = ui.REASONS.get(code, (code, ""))
             st.markdown(f"- **{name}** - {desc}")
 
-    ui.section("Task list")
-    f1, f2, f3 = st.columns(3)
-    why = f1.multiselect("Reason", sorted(u.Why.unique()), key="un_reason", placeholder="All reasons")
-    dept = f2.multiselect("Department", sorted(u.dept.unique()), key="un_dept", placeholder="All departments")
-    tier = f3.multiselect("Priority", [t for t in ui.TIER_ORDER if t in set(u.tier)], key="un_tier",
-                          placeholder="All priorities")
-    v = u[u.Why.isin(why or u.Why.unique()) & u.dept.isin(dept or u.dept.unique()) & u.tier.isin(tier or u.tier.unique())]
-    st.dataframe(v[["task_id", "dept", "section_id", "task", "tier", "Why", "due_idx", "recommended_action"]],
-                 hide_index=True, width="stretch", column_config={
-                     "task_id": "Task ID", "dept": "Dept", "section_id": "Section", "task": "Work", "tier": "Priority",
-                     "Why": "Why not scheduled", "due_idx": CC.NumberColumn("Due day", help="Days from plan start; "
-                                                                             "negative = already overdue"),
-                     "recommended_action": CC.TextColumn("Recommended action", width="large")})
-    st.download_button("Download unscheduled tasks (CSV)", v.to_csv(index=False), "unscheduled_tasks.csv", "text/csv",
-                       key="un_dl")
+    with st.expander(f"📋 Browse all {len(u)} unscheduled tasks, with filters"):
+        f1, f2, f3 = st.columns(3)
+        why = f1.multiselect("Reason", sorted(u.Why.unique()), key="un_reason", placeholder="All reasons")
+        dept = f2.multiselect("Department", sorted(u.dept.unique()), key="un_dept", placeholder="All departments")
+        tier = f3.multiselect("Priority", [t for t in ui.TIER_ORDER if t in set(u.tier)], key="un_tier",
+                              placeholder="All priorities")
+        v = u[u.Why.isin(why or u.Why.unique()) & u.dept.isin(dept or u.dept.unique()) & u.tier.isin(tier or u.tier.unique())]
+        st.dataframe(v[["task_id", "dept", "section_id", "task", "tier", "Why", "due_idx", "recommended_action"]],
+                     hide_index=True, width="stretch", column_config={
+                         "task_id": "Task ID", "dept": "Dept", "section_id": "Section", "task": "Work", "tier": "Priority",
+                         "Why": "Why not scheduled", "due_idx": CC.NumberColumn("Due day", help="Days from plan start; "
+                                                                                 "negative = already overdue"),
+                         "recommended_action": CC.TextColumn("Recommended action", width="large")})
+        st.download_button("Download unscheduled tasks (CSV)", v.to_csv(index=False), "unscheduled_tasks.csv", "text/csv",
+                           key="un_dl")
     if res["audit"] is not None:
         with st.expander("🔍 Objective audit (consistency check)"):
             st.caption("The plan's value recomputed independently, compared with what the solver reported.")
@@ -537,6 +567,7 @@ def page_unscheduled():
 def page_export():
     ui.header("📤 Export block requests", "Download the recommended blocks as requests for review. The layout is "
                                           "illustrative until the real BDMS fields are available.")
+    ui.explain("export")
     ew = st.segmented_control("Week", ["All"] + WEEKS, default="All", key="ex_week",
                               format_func=lambda w: "All weeks" if w == "All" else f"Week {w}") or "All"
     wb, wp = (blocks, plan) if ew == "All" else (blocks[blocks.week == ew], plan[plan.week == ew])
@@ -566,19 +597,26 @@ def page_export():
 
 
 # ================================================================ navigation + sidebar
-pages = {
-    "Plan": [st.Page(page_overview, title="Overview", icon="🏠", default=True),
-             st.Page(page_calendar, title="Block calendar", icon="📅", url_path="calendar"),
-             st.Page(page_monthly, title="Weekly & monthly view", icon="🗓️", url_path="monthly")],
-    "Scenarios": [st.Page(page_whatif, title="Emergency what-if", icon="⚡", url_path="what-if"),
-                  st.Page(page_rolling, title="Rolling re-plan", icon="🔄", url_path="rolling")],
-    "Review": [st.Page(page_unscheduled, title="Unscheduled work", icon="🧩", url_path="unscheduled"),
-               st.Page(page_export, title="Export requests", icon="📤", url_path="export")],
+PAGES = {
+    "start": st.Page(page_start, title="Start here", icon="👋", default=True),
+    "overview": st.Page(page_overview, title="Overview", icon="🏠", url_path="overview"),
+    "calendar": st.Page(page_calendar, title="Block calendar", icon="📅", url_path="calendar"),
+    "monthly": st.Page(page_monthly, title="Weekly & monthly view", icon="🗓️", url_path="monthly"),
+    "what-if": st.Page(page_whatif, title="Emergency what-if", icon="⚡", url_path="what-if"),
+    "rolling": st.Page(page_rolling, title="Rolling re-plan", icon="🔄", url_path="rolling"),
+    "unscheduled": st.Page(page_unscheduled, title="Unscheduled work", icon="🧩", url_path="unscheduled"),
+    "export": st.Page(page_export, title="Export requests", icon="📤", url_path="export"),
 }
+pages = {"Start": [PAGES["start"]],
+         "Plan": [PAGES[k] for k in ("overview", "calendar", "monthly")],
+         "Scenarios": [PAGES[k] for k in ("what-if", "rolling")],
+         "Review": [PAGES[k] for k in ("unscheduled", "export")]}
 nav = st.navigation(pages)
 
 st.logo(str(ROOT / "assets" / "logo.svg"), size="large")
 with st.sidebar:
+    st.toggle("🎓 Explain mode", value=True, key="explain",
+              help="Adds a short 'what you see / what to look at / why it matters' box to every page.")
     st.markdown("**Current plan**")
     st.markdown(f"**{o.START:%d %b} - {END:%d %b %Y}**  \n{len(T)} tasks · {len(windows)} corridor windows  \n"
                 f"{blocks.shape[0]} blocks planned")

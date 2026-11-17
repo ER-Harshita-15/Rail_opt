@@ -54,6 +54,34 @@ GLOSSARY = {
 }
 
 
+# Explain mode: for each page, what is on screen, what to look at, and why it matters.
+EXPLAIN = {
+    "overview": ("The same 4 weeks of maintenance planned two ways: by RailOpt, and by today's manual process "
+                 "(each department books its own blocks).",
+                 "The two columns. Fewer blocks and fewer trains disrupted means less disruption for the same work.",
+                 "This is the one-slide answer to the problem statement: coordinated planning frees up the line."),
+    "calendar": ("A timeline of blocks. Each row is one section and department; each bar is one task.",
+                 "Bars of different colours at the same time on the same row group are one shared block. "
+                 "Switch Plan to Manual to see how many more separate blocks the manual process needs.",
+                 "Shared blocks mean trains are stopped once instead of two or three times."),
+    "monthly": ("The month split into weeks: how many tasks and blocks each week gets, per department and section.",
+                "Week 1 is busiest because overdue work is cleared first; later weeks hold work that is not yet due.",
+                "Shows the long-term (monthly) and short-term (weekly) horizons the problem statement asks for."),
+    "whatif": ("A test: a new urgent defect arrives. The planner tries it in each week and reports the cost.",
+               "The recommended week and how many other tasks had to move.",
+               "Shows the plan can absorb emergencies, and what each choice costs the rest of the plan."),
+    "rolling": ("What happens when defects keep arriving after the plan is published. Three ways to respond "
+                "are compared on the same events.",
+                "Tasks moved and broken commitments: a good re-plan changes little that crews were already told.",
+                "Real plans change daily; a stable re-plan keeps crews and the control office able to trust it."),
+    "unscheduled": ("Tasks the plan left out, each with a reason and a recommended action.",
+                    "The orange action box: some work is longer than every available window.",
+                    "Nothing is dropped silently. Every left-out task has an explanation an official can act on."),
+    "export": ("The recommended blocks as a list of block requests, ready to review.",
+               "Joint blocks (several departments) and blocks that need power switched off.",
+               "This is what would go into BDMS. Officials still review and approve every request."),
+}
+
 # ---------------------------------------------------------------- CSS + plotly theme
 CSS = f"""
 <style>
@@ -85,7 +113,7 @@ h1, h2, h3 {{letter-spacing: -0.01em;}}
 .ro-step .n {{display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: {PRIMARY}; color: #fff;
     text-align: center; font-size: .78rem; line-height: 22px; margin-right: 6px;}}
 .ro-take {{border-left: 4px solid {ACCENT}; background: #FFF9F0; padding: 12px 16px; border-radius: 8px; margin: 6px 0 14px 0;}}
-.ro-take li {{margin: 3px 0;}}
+.ro-take ul {{padding-left: 20px;}} .ro-take li {{margin: 4px 0;}}
 .ro-card {{background: #fff; border: 1px solid #E3E8EE; border-radius: 12px; padding: 14px 16px; height: 100%;}}
 .ro-card h4 {{margin: 0 0 6px 0; color: {PRIMARY}; font-size: 1rem;}}
 .ro-card p {{margin: 0; color: #4B5B6B; font-size: .9rem;}}
@@ -93,6 +121,33 @@ h1, h2, h3 {{letter-spacing: -0.01em;}}
     margin-right: 6px; color: #fff;}}
 .ro-section {{font-size: 1.12rem; font-weight: 700; color: {PRIMARY}; margin: 18px 0 6px 0;}}
 .ro-sub {{color: #5B6B7B; margin: -2px 0 10px 0; font-size: .92rem;}}
+[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:first-of-type {{background: rgba(255,255,255,.25) !important;}}
+[data-testid="stSidebar"] [data-testid="stCheckbox"] label[data-selected="true"] > div:first-of-type {{background: {ACCENT} !important;}}
+.ro-explain {{display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 2px 0 18px 0;}}
+.ro-explain div {{background: #EEF5FB; border: 1px solid #D6E6F3; border-radius: 10px; padding: 10px 14px;
+    font-size: .9rem; color: #33475B;}}
+.ro-explain b {{display: block; color: {PRIMARY}; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em;
+    margin-bottom: 3px;}}
+@media (max-width: 900px) {{[data-testid="stSidebar"] [data-testid="stCheckbox"] label > div:first-of-type {{background: rgba(255,255,255,.25) !important;}}
+[data-testid="stSidebar"] [data-testid="stCheckbox"] label[data-selected="true"] > div:first-of-type {{background: {ACCENT} !important;}}
+.ro-explain {{grid-template-columns: 1fr;}}}}
+.ro-vs {{display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 6px 0 16px 0;}}
+.ro-vs > div {{border-radius: 14px; padding: 16px 20px; border: 1px solid #E3E8EE; background: #fff;}}
+.ro-vs .us {{border: 2px solid {PRIMARY}; box-shadow: 0 2px 10px rgba(11,60,93,.08);}}
+.ro-vs h4 {{margin: 0 0 10px 0; font-size: 1rem; color: #5B6B7B;}} .ro-vs .us h4 {{color: {PRIMARY};}}
+.ro-vs table {{width: 100%; border-collapse: collapse; border: none !important; margin: 0;}}
+.ro-vs tr {{background: transparent !important; border: none !important;}}
+.ro-vs td {{padding: 9px 0 !important; border: none !important; border-bottom: 1px solid #F0F3F6 !important;
+    font-size: .95rem; color: #33475B; height: 44px; vertical-align: middle;}}
+.ro-vs tr:last-child td {{border-bottom: none;}}
+.ro-vs td.v {{text-align: right; font-weight: 700; font-size: 1.15rem; color: #1F2D3A;}}
+.ro-vs .us td.v {{color: {PRIMARY};}}
+.ro-vs .d {{display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: .72rem;
+    font-weight: 700; color: {GOOD}; background: #E8F5E9; vertical-align: middle;}}
+.ro-vs .d.bad {{color: #8A5A00; background: #FFF3DC;}}
+.ro-tour {{background: #fff; border: 1px solid #E3E8EE; border-radius: 12px; padding: 12px 16px; margin-bottom: 4px;}}
+.ro-tour p {{margin: 2px 0; font-size: .92rem; color: #33475B;}}
+.ro-tour .say {{color: #5B6B7B; font-style: italic;}}
 .ro-foot {{color: #8592A0; font-size: .8rem; margin-top: 28px; border-top: 1px solid #E3E8EE; padding-top: 10px;}}
 </style>
 """
@@ -152,6 +207,34 @@ def dept_legend():
     chips = "".join(f'<span class="ro-chip" style="background:{c}">{k} · {DEPT_NAMES[k]}</span>'
                     for k, c in DEPT_COLORS.items())
     st.markdown(chips, unsafe_allow_html=True)
+
+
+def explain(page):
+    """Three short boxes at the top of a page; hidden when Explain mode is switched off in the sidebar."""
+    if not st.session_state.get("explain", True) or page not in EXPLAIN:
+        return
+    what, look, why = EXPLAIN[page]
+    st.markdown(f'<div class="ro-explain"><div><b>👀 What you see</b>{what}</div>'
+                f'<div><b>🔍 What to look at</b>{look}</div><div><b>💡 Why it matters</b>{why}</div></div>',
+                unsafe_allow_html=True)
+
+
+def versus(left_title, right_title, rows):
+    """Side-by-side 'manual vs RailOpt' card. rows = [(label, manual_value, railopt_value, delta_text, good)]."""
+    def side(title, cls, idx):
+        trs = ""
+        for label, a, b, d, good in rows:
+            val = a if idx == 0 else b
+            extra = f'<span class="d{"" if good else " bad"}">{d}</span>' if idx == 1 and d else ""
+            trs += f'<tr><td>{label}</td><td class="v">{val}{extra}</td></tr>'
+        return f'<div class="{cls}"><h4>{title}</h4><table>{trs}</table></div>'
+    st.markdown(f'<div class="ro-vs">{side(left_title, "them", 0)}{side(right_title, "us", 1)}</div>',
+                unsafe_allow_html=True)
+
+
+def tour_step(n, title, show, say):
+    st.markdown(f'<div class="ro-tour"><p><b>{n}. {title}</b></p><p>👉 {show}</p>'
+                f'<p class="say">🗣️ "{say}"</p></div>', unsafe_allow_html=True)
 
 
 def how_to_read(md):
