@@ -1,0 +1,7 @@
+task_id,dept,section_id,task,tier,due_day,start_day,days_late,ontime_windows,ontime_opened,opened_but_same_crew_busy,opened_but_crews_all_out,cheapest_new_ontime_block,cost_of_lateness,placed_in_joint_block
+SMMS0037,S&T,DPK-RIG,Axle counter calibration,LOW,0,2,2,2,0,0,0,175,15,True
+TDMS0018,TRD,AKLT-TLD,OHE wire tension adjustment,MEDIUM,1,2,1,3,2,2,0,275,8,True
+SMMS0049,S&T,BLSP-J-KRBA,Point machine maintenance,LOW,3,4,1,10,4,4,0,150,10,False
+SMMS0029,S&T,KRBA-USLP,Signal lamp/relay failure,HIGH,2,4,2,7,4,4,0,265,23,False
+SMMS0050,S&T,SKR-DPK,Axle counter calibration,MEDIUM,2,4,2,7,2,2,0,140,15,False
+SMMS0020,S&T,SKR-DPK,Cable insulation test,LOW,7,12,5,16,3,3,0,135,28,False
