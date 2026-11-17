@@ -6,8 +6,12 @@ Generates data that mimics TMS (Engineering), SMMS (S&T), TDMS (Traction),
 COA (corridor block windows), the train timetable and the goods forecast,
 and normalizes the maintenance sources into ONE common task schema.
 
-Run:  python data_gen.py            -> writes CSVs into ./data
+Run:  python Block_planner/data_gen.py   -> writes the CSVs into the repository-level DATA/ folder,
+      which is where the planner (optimizer.py / horizons.py) reads them.
+      --out DIR writes somewhere else instead (e.g. to compare without touching DATA/).
+The generator is seeded, so a re-run reproduces the committed DATA/ files value for value.
 """
+import argparse
 from dataclasses import dataclass, asdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -17,7 +21,7 @@ import pandas as pd
 SEED = 42
 rng = np.random.default_rng(SEED)
 TODAY = date(2026, 10, 26)          # planning start (a Monday)
-OUT = Path(__file__).parent / "data"
+OUT = Path(__file__).resolve().parent.parent / "DATA"      # same folder optimizer.DATA reads
 
 # --------------------------------------------------------------------------
 # 1. Network: sections (station-to-station block sections on a trunk route)
@@ -197,7 +201,10 @@ def build_tasks(sections) -> pd.DataFrame:
 
 # --------------------------------------------------------------------------
 if __name__ == "__main__":
-    OUT.mkdir(exist_ok=True)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", type=Path, default=OUT, help=f"output folder (default {OUT})")
+    OUT = ap.parse_args().out
+    OUT.mkdir(parents=True, exist_ok=True)
     sections = make_sections()
     traffic = make_traffic(sections)
     windows = make_corridor_windows(sections, traffic)
@@ -208,6 +215,7 @@ if __name__ == "__main__":
     windows.to_csv(OUT / "coa_corridor_windows.csv", index=False)
     tasks.to_csv(OUT / "tasks_common_schema.csv", index=False)
 
+    print(f"wrote 4 files to {OUT}")
     print(f"sections: {len(sections)} | traffic rows: {len(traffic)} | "
           f"windows: {len(windows)} | tasks: {len(tasks)}")
     print("\nTasks by dept:\n", tasks.dept.value_counts().to_string())
