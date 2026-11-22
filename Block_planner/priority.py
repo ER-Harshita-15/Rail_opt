@@ -12,8 +12,11 @@ model is trained on a SYNTHETIC history whose labels come from a hidden rule plu
 noise. The pipeline is real; the reported accuracy only shows the pipeline works.
 With real TMS/SMMS/TDMS history, only `make_history()` needs replacing.
 
-Run:  python priority.py      (needs data/ from data_gen.py)
+Run:  python Block_planner/priority.py
+      Reads DATA/ (written by data_gen.py) and writes outputs/prioritized_tasks.csv, both at the repository
+      root, which is exactly what the planner reads. --data DIR / --out DIR override the folders.
 """
+import argparse
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -22,8 +25,8 @@ import shap
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-ROOT = Path(__file__).parent
-DATA, OUT = ROOT / "data", ROOT / "outputs"
+ROOT = Path(__file__).resolve().parent.parent          # repository root
+DATA, OUT = ROOT / "DATA", ROOT / "outputs"            # same folders optimizer.py reads
 SEED = 7
 
 # Expert-set weights (later: tune with AHP or learn from past planner decisions)
@@ -148,7 +151,12 @@ def score_breakdown(r):
 
 
 if __name__ == "__main__":
-    OUT.mkdir(exist_ok=True)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", type=Path, default=DATA, help=f"input folder (default {DATA})")
+    ap.add_argument("--out", type=Path, default=OUT, help=f"output folder (default {OUT})")
+    a = ap.parse_args()
+    DATA, OUT = a.data, a.out
+    OUT.mkdir(parents=True, exist_ok=True)
     tasks, sections, traffic = load_inputs()
     df = add_features(tasks, sections, traffic)
 

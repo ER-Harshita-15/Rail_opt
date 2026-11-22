@@ -92,6 +92,9 @@ flowchart LR
 │   ├── baseline.py               # Simulated manual-planning baseline
 │   ├── metrics.py                # KPI calculations and result loading
 │   ├── whatif.py                 # Emergency-task impact analysis
+│   ├── replan.py                 # Rolling re-planning (stable / full / patch)
+│   ├── analysis.py               # Open-question analyses (myopic, late tasks, safety rule)
+│   ├── ui.py                     # Dashboard styling and plain-language labels
 │   ├── bdms_export.py            # Illustrative CSV/JSON export helpers
 │   ├── outputs/                  # Generated plans and diagnostics
 │   └── test_*.py                 # Unit and integration tests
@@ -159,14 +162,19 @@ Streamlit prints a local URL in the terminal. Open that URL in a browser. The da
 
 ## 📊 Dashboard
 
-| Tab | What you can inspect |
-|:---|:---|
-| **Overview** | Optimized schedule compared with the simulated manual baseline |
-| **Block calendar** | Task timeline filtered by plan, week, department, and section |
-| **Monthly plan** | Weekly summary, department workload, and monthly-plan realization |
-| **What-if** | Impact of adding an emergency maintenance task |
-| **Unscheduled & diagnostics** | Unscheduled-task reasons, capacity information, and objective audit |
-| **Export** | Illustrative block-request and work-item CSV/JSON downloads |
+The dashboard is split into pages, grouped in the sidebar. Each page opens with a one-line explanation, and the sidebar has a **glossary** of railway and planning terms.
+
+| Group | Page | What you can inspect |
+|:---|:---|:---|
+| Plan | **Overview** | Headline KPIs, key takeaways and the full comparison with the simulated manual baseline |
+| Plan | **Block calendar** | Gantt view of blocks filtered by plan, week, department and section, with selection KPIs |
+| Plan | **Weekly & monthly view** | Per-week cards, department workload, section heatmap and monthly-plan realization |
+| Scenarios | **Emergency what-if** | Impact of adding an emergency task, with a recommended week |
+| Scenarios | **Rolling re-plan** | Stable vs full vs patch re-planning on saved and custom events |
+| Review | **Unscheduled work** | Why tasks were left out, in plain language, with filters and recommended actions |
+| Review | **Export requests** | Illustrative block-request and work-item CSV/JSON downloads |
+
+The theme lives in `.streamlit/config.toml` (read when Streamlit is started from the repository root) and the shared styling and labels live in `Block_planner/ui.py`.
 
 ## 📦 Outputs
 
@@ -185,6 +193,8 @@ The planning run produces files in `Block_planner\outputs\`, including:
 | `workload_profile.csv` | Workload by week |
 | `objective_audit.csv` | Recomputed objective compared with solver results |
 
+`python .\Block_planner\analysis.py` (about 15 seconds) adds `analysis_myopic.csv`, `analysis_late_tasks.csv`, `analysis_safety.csv` and `analysis_summary.txt`. See `Docs\Build Plan.docx`, Step 7, for what they show.
+
 ## 🧪 Tests
 
 Run the test suite from the repository root:
@@ -197,13 +207,15 @@ Some integration tests rely on the prepared CSV inputs and generated planner out
 
 ## 📝 Data and assumptions
 
-The project includes early-stage synthetic data and priority utilities, but their default paths are not wired directly into the current planner workflow:
+The full pipeline reads and writes the same repository-level folders, so each step feeds the next:
 
-- `Block_planner\data_gen.py` writes generated inputs to `Block_planner\data\`.
-- `Block_planner\priority.py` reads from and writes to `Block_planner\data\` and `Block_planner\outputs\`.
-- The current planner reads tasks and corridor windows from the repository-level `DATA\` directory and priority scores from repository-level `outputs\prioritized_tasks.csv`.
+```powershell
+python .\Block_planner\data_gen.py      # writes DATA\*.csv (seeded: reproduces the committed files)
+python .\Block_planner\priority.py      # reads DATA\, writes outputs\prioritized_tasks.csv
+python .\Block_planner\horizons.py --no-ablation   # writes Block_planner\outputs\
+```
 
-Therefore, running the early-stage utilities alone does **not** refresh the inputs used by the planner. Place or prepare the required CSVs in the locations listed above before running `horizons.py`.
+Both generators accept `--out` (and `priority.py` also `--data`) to write somewhere else, for example to compare a new dataset without overwriting `DATA\`.
 
 Keep these limitations in mind when interpreting results:
 
